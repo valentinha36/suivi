@@ -161,7 +161,8 @@ function charger() {
 
 let initFait = false;
 function init() {
-  if (D.reglages && D.reglages.nomSalon) { $('titre').textContent = '💅 ' + D.reglages.nomSalon; document.title = D.reglages.nomSalon; }
+  if (D.reglages && D.reglages.nomSalon) { $('titre').textContent = icone() + ' ' + D.reglages.nomSalon; document.title = D.reglages.nomSalon; }
+  appliquerReglages();
   $('sousTitre').textContent = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   document.querySelectorAll('.debutOffre').forEach(s => s.textContent = D.debutOffre);
   if (!initFait) {
@@ -184,6 +185,7 @@ function init() {
 function majTout(d) {
   if (!d) return;
   D = d; lsSet(CLE_DONNEES, JSON.stringify(D));
+  appliquerReglages();
   construirePrestations(true);
   construireChoixOffres();
   rafraichir();
@@ -227,7 +229,7 @@ function nouvelleSaisie() {
 }
 
 function infoCliente(c) {
-  if (!c.total) return 'nouvelle cliente';
+  if (!c.total) return M('nouvelle cliente', 'nouveau client');
   const reste = D.passagesPourOffre - (c.depuis % D.passagesPourOffre);
   return c.total + ' passage' + (c.total > 1 ? 's' : '') + (reste === 1 && fideliteActive() ? ' · 🎁 ' + RED() + ' cette fois !' : '');
 }
@@ -241,7 +243,7 @@ function filtrerClientes() {
       const c = D.clientes.find(x => x.cle === r.cle);
       if (c && !recents.includes(c) && recents.length < 5) recents.push(c);
     });
-    if (recents.length) box.appendChild(el('div', 'discret', 'Clientes récentes :'));
+    if (recents.length) box.appendChild(el('div', 'discret', M('Clientes récentes :', 'Clients récents :')));
     recents.forEach(c => box.appendChild(boutonCliente(c)));
     return;
   }
@@ -249,7 +251,7 @@ function filtrerClientes() {
   res.forEach(c => box.appendChild(boutonCliente(c)));
   if (!res.some(c => c.cle === q)) {
     const nom = $('recherche').value.trim();
-    const b = el('button', 'choix nouvelle', '➕ Nouvelle cliente : ' + nom);
+    const b = el('button', 'choix nouvelle', M('➕ Nouvelle cliente : ', '➕ Nouveau client : ') + nom);
     b.onclick = () => choisirCliente({ nom, cle: q, total: 0, depuis: 0, nouvelle: true });
     box.appendChild(b);
   }
@@ -353,10 +355,10 @@ function majResume() {
 }
 
 function enregistrer() {
-  if (!cliente) return message('👉 Choisis d\'abord la cliente (étape 1).');
+  if (!cliente) return message(M('👉 Choisis d\'abord la cliente (étape 1).', '👉 Choisis d\'abord le client (étape 1).'));
   if (!choisis.length) return message('👉 Choisis au moins une prestation (étape 2).');
   if ($('prix').value === '') return message('👉 Indique le prix (étape 3).');
-  if (!paiementChoisi) return message('👉 Indique comment elle a payé (étape 3).');
+  if (mod('paiement') && !paiementChoisi) return message('👉 Indique comment elle a payé (étape 3).');
   const aPayer = majResume();
   const p = {
     date: $('date').value, heure: $('heure').value, client: cliente.nom, items: choisis.slice(),
@@ -393,7 +395,22 @@ let filtre = 'toutes';
 const dateNum = s => { const m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? new Date(+m[3], m[2] - 1, +m[1]).getTime() : 0; };
 const RED = () => '−' + ((D && D.reductionFidelite) || 50).toLocaleString('fr-FR') + ' %';
 const TAUX = () => ((D && D.reductionFidelite) || 50) / 100;
-const fideliteActive = () => !D.fidelite || D.fidelite.etat === 'active';
+/* ---------- Modules, métier et vocabulaire (onglet Réglages du Google Sheet) ---------- */
+const mod = k => !(D && D.reglages && D.reglages.modules && D.reglages.modules[k] === false);
+const estClient = () => !!(D && D.reglages && D.reglages.mot === 'Client');
+const M = (fem, masc) => estClient() ? masc : fem; // ex. M('cliente', 'client')
+const icone = () => (D && D.reglages && D.reglages.icone) || '💅';
+
+function appliquerReglages() {
+  ['fidelite', 'offres', 'options', 'paiement', 'achats', 'fiche', 'heure']
+    .forEach(k => document.body.classList.toggle('sans-' + k, !mod(k)));
+  document.querySelectorAll('[data-mot]').forEach(e => { const [f, m] = e.dataset.mot.split('|'); e.textContent = estClient() ? m : f; });
+  $('titrePrestations').textContent = icone() + ' Prestations';
+  $('recherche').placeholder = 'Tape le prénom…';
+  if (!mod('achats') && vueActive === 'achats') vue('nouvelle');
+}
+
+const fideliteActive = () => mod('fidelite') && (!D.fidelite || D.fidelite.etat === 'active');
 const prochesOffre = c => fideliteActive() && c.depuis % D.passagesPourOffre === D.passagesPourOffre - 1;
 const absente = c => c.total > 0 && dateNum(c.derniere) && (Date.now() - dateNum(c.derniere)) > 60 * 864e5;
 
@@ -419,8 +436,8 @@ function afficherClientes() {
     ca: (a, b) => b.ca - a.ca || parNom(a, b),
     offre: (a, b) => (b.depuis % D.passagesPourOffre) - (a.depuis % D.passagesPourOffre) || parNom(a, b),
   }[$('tri').value]);
-  $('nbClientes').textContent = liste.length + ' cliente' + (liste.length > 1 ? 's' : '');
-  if (!liste.length) box.appendChild(el('p', 'discret', 'Aucune cliente ne correspond.'));
+  $('nbClientes').textContent = liste.length + ' ' + M('cliente', 'client') + (liste.length > 1 ? 's' : '');
+  if (!liste.length) box.appendChild(el('p', 'discret', M('Aucune cliente ne correspond.', 'Aucun client ne correspond.')));
   liste.forEach(c => {
     const k = el('div', 'carte cliquable');
     const l1 = el('div', 'ligne1'); l1.appendChild(el('span', '', c.nom));
@@ -433,7 +450,7 @@ function afficherClientes() {
     if (c.ca) infos.push(euros(c.ca));
     if (c.tel) infos.push('📞');
     k.appendChild(el('div', 'ligne2', infos.join(' · ')));
-    k.appendChild(pointsFidelite(c));
+    if (fideliteActive()) k.appendChild(pointsFidelite(c));
     k.onclick = () => ouvrirFiche(c.cle);
     box.appendChild(k);
   });
@@ -831,15 +848,16 @@ function afficherBilan() {
   const tb = $('tableMois'); tb.innerHTML = '';
   let tc = 0, ta = 0;
   const cellule = (v, neg) => el('td', 'n' + (neg ? ' negatif' : ''), euros(v));
+  const celluleA = (v, neg) => el('td', 'n m-achats' + (neg ? ' negatif' : ''), euros(v));
   D.mois.forEach((m, i) => {
     const dep = D.achatsMois[i] || 0;
     if (!m.nb && !dep) return; tc += m.ca; ta += dep;
     const tr = el('tr'); tr.appendChild(el('td', '', MOIS[i]));
-    tr.appendChild(cellule(m.ca)); tr.appendChild(cellule(dep)); tr.appendChild(cellule(m.ca - dep, m.ca - dep < 0));
+    tr.appendChild(cellule(m.ca)); tr.appendChild(celluleA(dep)); tr.appendChild(celluleA(m.ca - dep, m.ca - dep < 0));
     tb.appendChild(tr);
   });
   const tr = el('tr', 'total-ligne');
-  tr.appendChild(el('td', '', 'Total')); tr.appendChild(cellule(tc)); tr.appendChild(cellule(ta)); tr.appendChild(cellule(tc - ta, tc - ta < 0));
+  tr.appendChild(el('td', '', 'Total')); tr.appendChild(cellule(tc)); tr.appendChild(celluleA(ta)); tr.appendChild(celluleA(tc - ta, tc - ta < 0));
   tb.appendChild(tr);
   $('anCa').textContent = euros(tc); $('anAchats').textContent = euros(ta); $('anReste').textContent = euros(tc - ta);
   $('anReste').classList.toggle('negatif', tc - ta < 0);

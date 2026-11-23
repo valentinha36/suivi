@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <header><div class="titre" id="titre">💅 Suivi des prestations</div><div class="sous" id="sousTitre"></div></header>
@@ -33,7 +33,7 @@
   <!-- ============ NOUVELLE PRESTATION ============ -->
   <section id="v-nouvelle" class="cache">
     <div id="formulaire">
-      <h2><span class="etape">1</span>Cliente</h2>
+      <h2><span class="etape">1</span><span data-mot="Cliente|Client">Cliente</span></h2>
       <div id="clienteChoisie" class="selection cache">
         <span id="clienteNom"></span>
         <button class="lien" onclick="changerCliente()">Changer</button>
@@ -45,29 +45,29 @@
 
       <h2><span class="etape">2</span>Prestation</h2>
       <div id="prestations" class="grille"></div>
-      <h3 class="sous-titre">+ Options</h3>
-      <div id="options" class="grille options"></div>
+      <h3 class="sous-titre m-options">+ Options</h3>
+      <div id="options" class="grille options m-options"></div>
 
-      <h2><span class="etape">3</span>Prix et paiement</h2>
+      <h2><span class="etape">3</span>Prix<span class="m-paiement">&nbsp;et paiement</span></h2>
       <div class="total">
         <input type="number" id="prix" inputmode="decimal" placeholder="0" oninput="prixModifie()">
         <span style="font-size:22px">€</span>
         <button class="lien cache" id="prixAuto" onclick="remettrePrixAuto()">Prix automatique</button>
       </div>
       <div id="fidelite" class="fidelite cache"></div>
-      <div id="blocOffre">
+      <div id="blocOffre" class="m-offres">
         <h3 class="sous-titre">🏷️ Offre (facultatif)</h3>
         <div id="anniv" class="fidelite info cache"></div>
         <div id="choixOffres" class="grille options"></div>
       </div>
       <div id="encaisser" class="encaisser"></div>
-      <h3 class="sous-titre">💳 Payé comment ?</h3>
-      <div id="choixPaiement" class="paiements"></div>
+      <h3 class="sous-titre m-paiement">💳 Payé comment ?</h3>
+      <div id="choixPaiement" class="paiements m-paiement"></div>
 
       <h2><span class="etape">4</span>Quand ?</h2>
       <div class="quand">
         <input type="date" id="date" onchange="majResume()">
-        <input type="time" id="heure">
+        <input type="time" id="heure" class="m-heure">
       </div>
 
       <button class="gros" id="btnEnregistrer" onclick="enregistrer()">✔ Enregistrer</button>
@@ -84,13 +84,13 @@
 
   <!-- ============ CLIENTES ============ -->
   <section id="v-clientes" class="cache">
-    <h2>Clientes</h2>
+    <h2 data-mot="Clientes|Clients">Clientes</h2>
     <input type="text" id="rechercheClientes" placeholder="Rechercher…" oninput="afficherClientes()">
     <div class="filtres" id="filtres">
-      <button class="puce on" data-f="toutes">Toutes</button>
-      <button class="puce" data-f="offre">🎁 Fidélité au prochain passage</button>
+      <button class="puce on" data-f="toutes" data-mot="Toutes|Tous">Toutes</button>
+      <button class="puce m-fidelite" data-f="offre">🎁 Fidélité au prochain passage</button>
       <button class="puce" data-f="anniv">🎂 Anniversaire ce mois</button>
-      <button class="puce" data-f="absente">💤 Pas venue depuis 2 mois</button>
+      <button class="puce" data-f="absente" data-mot="💤 Pas venue depuis 2 mois|💤 Pas venu depuis 2 mois">💤 Pas venue depuis 2 mois</button>
       <button class="puce" data-f="regulieres">⭐ Fidèles (5 passages et +)</button>
     </div>
     <div class="trier">
@@ -100,17 +100,17 @@
         <option value="recente">Dernière visite (récente d'abord)</option>
         <option value="passages">Nombre de passages</option>
         <option value="ca">Chiffre d'affaires</option>
-        <option value="offre">Plus proche de l'offre fidélité</option>
+        <option value="offre" class="m-fidelite">Plus proche de l'offre fidélité</option>
       </select>
     </div>
     <p id="nbClientes" class="discret"></p>
     <div id="listeClientes"></div>
-    <p class="discret">Touche une cliente pour voir sa fiche. Les ronds = passages depuis le <span class="debutOffre"></span>.</p>
+    <p class="discret"><span data-mot="Touche une cliente|Touche un client">Touche une cliente</span> pour voir sa fiche.<span class="m-fidelite"> Les ronds = passages depuis le <span class="debutOffre"></span>.</span></p>
   </section>
 
   <!-- ============ FICHE CLIENTE ============ -->
   <section id="v-fiche" class="cache">
-    <button class="lien retour" onclick="vue('clientes')">← Toutes les clientes</button>
+    <button class="lien retour" onclick="vue('clientes')" data-mot="← Toutes les clientes|← Tous les clients">← Toutes les clientes</button>
     <div class="carte fiche-entete">
       <div class="fiche-nom" id="ficheNom"></div>
       <div class="ligne2" id="ficheSous"></div>
@@ -123,10 +123,11 @@
     </div>
     <button class="gros" onclick="prestationPourFiche()">➕ Nouvelle prestation pour <span id="ficheNomBouton"></span></button>
 
-    <h2>📇 Coordonnées et notes</h2>
+    <h2>📇 <span class="m-fiche">Coordonnées et notes</span><span class="m-sans-fiche">Prénom</span></h2>
     <div class="carte">
       <label class="etiquette" for="fichePrenom">Prénom (nom affiché)</label>
       <input type="text" id="fichePrenom" maxlength="60">
+      <div class="m-fiche">
       <label class="etiquette" for="ficheTel">Téléphone</label>
       <input type="tel" id="ficheTel" placeholder="06 12 34 56 78" inputmode="tel">
       <div class="contact" id="ficheContact">
@@ -138,7 +139,8 @@
       <label class="etiquette" for="ficheAnniv">Anniversaire (jour/mois)</label>
       <input type="text" id="ficheAnniv" placeholder="ex. 09/04" inputmode="numeric" maxlength="10">
       <label class="etiquette" for="ficheNotes">Notes</label>
-      <textarea id="ficheNotes" rows="4" placeholder="Couleurs préférées, allergies, forme d'ongles…"></textarea>
+      <textarea id="ficheNotes" rows="4" placeholder="Préférences, allergies, remarques…"></textarea>
+      </div>
       <button class="gros secondaire" id="btnFiche" onclick="sauverFiche()">✔ Enregistrer la fiche</button>
     </div>
 
@@ -155,16 +157,19 @@
 
   <!-- ============ TARIFS & OFFRES ============ -->
   <section id="v-tarifs" class="cache">
-    <h2>💅 Prestations</h2>
+    <h2 id="titrePrestations">💅 Prestations</h2>
     <div id="tarifsPrestations"></div>
     <button class="lien" onclick="ajouterLigneTarif(false)">➕ Ajouter une prestation</button>
+    <div class="m-options">
     <h2>✨ Options</h2>
     <div id="tarifsOptions"></div>
     <button class="lien" onclick="ajouterLigneTarif(true)">➕ Ajouter une option</button>
+    </div>
     <button class="gros" id="btnTarifs" onclick="sauverTarifs()">✔ Enregistrer les tarifs</button>
 
-    <h2 style="margin-top:34px">🏷️ Offres</h2>
-    <div id="carteFidelite"></div>
+    <h2 style="margin-top:34px" class="m-offres-ou-fidelite">🏷️ Offres</h2>
+    <div id="carteFidelite" class="m-fidelite"></div>
+    <div class="m-offres">
     <p class="discret">Les autres offres se choisissent au moment de la saisie (étape 3). En vert : active · en blanc : en pause.</p>
     <div id="listeOffres"></div>
     <h3 class="sous-titre">➕ Créer une offre</h3>
@@ -179,6 +184,7 @@
       </div>
       <button class="gros secondaire" onclick="creerOffre()">Créer l'offre</button>
     </div>
+    </div>
     <h2>👀 À surveiller</h2>
     <div id="surveiller"></div>
   </section>
@@ -189,7 +195,7 @@
     <p class="discret" style="margin-top:-4px">Montants TTC (ce que tu as payé, TVA comprise).</p>
     <div class="carte">
       <label class="etiquette" for="achatLibelle">C'est quoi ?</label>
-      <input type="text" id="achatLibelle" placeholder="ex. Gel couleur rose, lampe UV…" maxlength="120">
+      <input type="text" id="achatLibelle" placeholder="ex. produits, matériel…" maxlength="120">
       <label class="etiquette">Catégorie</label>
       <div id="achatCategories" class="grille options"></div>
       <div class="quand" style="margin-top:12px">
@@ -220,15 +226,15 @@
     <h2 id="titreBilanAnnee">Bilan de l'année</h2>
     <div class="stats">
       <div class="stat vedette">Encaissé (TTC)<b id="anCa">0 €</b></div>
-      <div class="stat">Dépensé (TTC)<b id="anAchats">0 €</b></div>
+      <div class="stat m-achats">Dépensé (TTC)<b id="anAchats">0 €</b></div>
     </div>
-    <div class="stat vedette" style="margin-top:10px">Il reste (encaissé − dépensé)<b id="anReste">0 €</b></div>
-    <h2>💳 Encaissé par mode de paiement</h2>
-    <div id="paiements" class="carte"></div>
-    <h2>Dépenses par catégorie</h2>
-    <div id="categories" class="carte"></div>
+    <div class="stat vedette m-achats" style="margin-top:10px">Il reste (encaissé − dépensé)<b id="anReste">0 €</b></div>
+    <h2 class="m-paiement">💳 Encaissé par mode de paiement</h2>
+    <div id="paiements" class="carte m-paiement"></div>
+    <h2 class="m-achats">Dépenses par catégorie</h2>
+    <div id="categories" class="carte m-achats"></div>
     <h2 id="titreAnnee">Par mois</h2>
-    <table><thead><tr><th>Mois</th><th class="n">Encaissé</th><th class="n">Dépensé</th><th class="n">Reste</th></tr></thead><tbody id="tableMois"></tbody></table>
+    <table><thead><tr><th>Mois</th><th class="n">Encaissé</th><th class="n m-achats">Dépensé</th><th class="n m-achats">Reste</th></tr></thead><tbody id="tableMois"></tbody></table>
     <h2>Dernières saisies</h2>
     <div id="recentes"></div>
   </section>
@@ -241,17 +247,17 @@
     <h2 style="margin-top:4px">✏️ Modifier la saisie</h2>
     <div class="quand">
       <div><label class="etiquette" for="mDate">Date</label><input type="date" id="mDate"></div>
-      <div><label class="etiquette" for="mHeure">Heure</label><input type="time" id="mHeure"></div>
+      <div class="m-heure"><label class="etiquette" for="mHeure">Heure</label><input type="time" id="mHeure"></div>
     </div>
-    <label class="etiquette" for="mClient">Cliente</label>
+    <label class="etiquette" for="mClient" data-mot="Cliente|Client">Cliente</label>
     <input type="text" id="mClient" list="listeNoms" autocomplete="off">
     <label class="etiquette" for="mPrestation">Prestation</label>
     <input type="text" id="mPrestation">
     <label class="etiquette" for="mPrix">Prix (€, avant offre)</label>
     <input type="number" id="mPrix" inputmode="decimal">
-    <label class="etiquette">Paiement</label>
-    <div id="mPaiement" class="paiements"></div>
-    <div id="mBlocOffre">
+    <label class="etiquette m-paiement">Paiement</label>
+    <div id="mPaiement" class="paiements m-paiement"></div>
+    <div id="mBlocOffre" class="m-offres">
       <label class="etiquette" for="mOffre">Offre</label>
       <select id="mOffre"></select>
     </div>
@@ -267,12 +273,12 @@
 
 <nav>
   <button id="t-nouvelle" onclick="vue('nouvelle')"><span>➕</span>Nouvelle</button>
-  <button id="t-clientes" onclick="vue('clientes')"><span>👩</span>Clientes</button>
+  <button id="t-clientes" onclick="vue('clientes')"><span>👩</span><b data-mot="Clientes|Clients">Clientes</b></button>
   <button id="t-tarifs" onclick="vue('tarifs')"><span>🏷️</span>Tarifs</button>
-  <button id="t-achats" onclick="vue('achats')"><span>🧾</span>Achats</button>
+  <button id="t-achats" class="m-achats" onclick="vue('achats')"><span>🧾</span>Achats</button>
   <button id="t-bilan" onclick="vue('bilan')"><span>📊</span>Bilan</button>
 </nav>
 <div id="msg" class="msg"></div>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>

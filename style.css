@@ -244,3 +244,12 @@ textarea:focus { outline: none; border-color: var(--rose); box-shadow: 0 0 0 4px
 .carte.offre-pause .ligne1 { color: var(--gris); }
 .ligne2.etat { font-weight: 700; }
 .offre-active .ligne2.etat { color: var(--vert); }
+
+/* ===== Modules désactivés (réglés dans l'onglet Réglages du Google Sheet) ===== */
+body.sans-fidelite .m-fidelite, body.sans-offres .m-offres, body.sans-options .m-options,
+body.sans-paiement .m-paiement, body.sans-achats .m-achats, body.sans-fiche .m-fiche,
+body.sans-heure .m-heure { display: none !important; }
+body:not(.sans-fiche) .m-sans-fiche { display: none !important; }
+body.sans-offres.sans-fidelite .m-offres-ou-fidelite { display: none !important; }
+body.sans-heure .quand { grid-template-columns: 1fr; }
+nav button b { font-weight: inherit; }
