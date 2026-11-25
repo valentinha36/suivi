@@ -1,25 +1,33 @@
 /* ===== Suivi Ongles – application ===== */
 'use strict';
 
-/* Adresse du Google Sheet de la cliente : donnée une fois dans le lien (?api=…), puis mémorisée sur l'appareil. */
-const API_DEFAUT = ''; // pas de salon par défaut : chaque cliente a son lien
+/* Salon de la cliente : donné une fois dans le lien, puis mémorisé sur l'appareil.
+   - ?salon=<identifiant du Google Sheet> → serveur central (mises à jour pour toutes les clientes en une fois)
+   - ?api=<adresse d'une application déployée> → ancien format, toujours accepté */
+const SERVEUR_CENTRAL = 'https://script.google.com/macros/s/AKfycbxWejimyOL5FGpNqy3qYO6JLQZswiVAsl_CDho2ueERr3MP3WwFob3f8E_UDSnLzZQE/exec';
 const API_VALIDE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]{20,}\/exec$/;
-const API = (function () {
-  let p = null;
-  try { p = new URLSearchParams(location.search).get('api'); } catch (e) { p = null; }
-  if (p && API_VALIDE.test(p)) {
+const SALON_VALIDE = /^[\w-]{25,80}$/;
+const { API, SALON } = (function () {
+  let q = null;
+  try { q = new URLSearchParams(location.search); } catch (e) { q = null; }
+  const changer = (cle, val) => {
     try {
-      if (localStorage.getItem('api_suivi') !== p) { // autre salon : on repart de zéro sur cet appareil
-        ['pin_suivi', 'donnees_suivi', 'attente_suivi'].forEach(k => localStorage.removeItem(k));
-      }
-      localStorage.setItem('api_suivi', p);
+      const avant = (localStorage.getItem('salon_suivi') || '') + '|' + (localStorage.getItem('api_suivi') || '');
+      localStorage.setItem('salon_suivi', cle === 'salon' ? val : '');
+      localStorage.setItem('api_suivi', cle === 'api' ? val : '');
+      const apres = localStorage.getItem('salon_suivi') + '|' + localStorage.getItem('api_suivi');
+      if (avant !== apres) ['pin_suivi', 'donnees_suivi', 'attente_suivi'].forEach(k => localStorage.removeItem(k)); // autre salon
     } catch (e) { /* stockage indisponible */ }
     history.replaceState(null, '', location.pathname);
-    return p;
-  }
-  let s = null;
-  try { s = localStorage.getItem('api_suivi'); } catch (e) { s = null; }
-  return s && API_VALIDE.test(s) ? s : API_DEFAUT;
+  };
+  const salon = q && q.get('salon'), api = q && q.get('api');
+  if (salon && SALON_VALIDE.test(salon)) { changer('salon', salon); return { API: SERVEUR_CENTRAL, SALON: salon }; }
+  if (api && API_VALIDE.test(api)) { changer('api', api); return { API: api, SALON: '' }; }
+  let s = '', a = '';
+  try { s = localStorage.getItem('salon_suivi') || ''; a = localStorage.getItem('api_suivi') || ''; } catch (e) { /* rien */ }
+  if (SALON_VALIDE.test(s)) return { API: SERVEUR_CENTRAL, SALON: s };
+  if (API_VALIDE.test(a)) return { API: a, SALON: '' };
+  return { API: '', SALON: '' };
 })();
 const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 const GENERIQUES = ['cliente', 'client', 'accompagnant', 'accompagnante'];
@@ -63,7 +71,7 @@ function heureVersChamp(h) {
 async function api(action, extra) {
   let r;
   try {
-    r = await fetch(API, { method: 'POST', credentials: 'omit', body: JSON.stringify(Object.assign({ pin: PIN, action }, extra || {})) });
+    r = await fetch(API, { method: 'POST', credentials: 'omit', body: JSON.stringify(Object.assign({ pin: PIN, action }, SALON ? { salon: SALON } : {}, extra || {})) });
   } catch (e) {
     const err = new Error('Pas de connexion internet.'); err.horsLigne = true; throw err;
   }
