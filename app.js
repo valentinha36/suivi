@@ -853,6 +853,41 @@ function afficherFidelite() {
   };
   act.appendChild(bP); act.appendChild(bS); k.appendChild(act);
   z.appendChild(k);
+
+  // Règles de la fidélité, modifiables depuis l'application
+  const f = el('div', 'carte');
+  f.appendChild(el('div', 'ligne1', 'Règles de la fidélité'));
+  const champ = (label, id, type, valeur, attrs) => {
+    const l = el('label', 'etiquette', label); l.htmlFor = id; f.appendChild(l);
+    const i = el('input'); i.type = type; i.id = id; i.value = valeur;
+    Object.assign(i, attrs || {}); f.appendChild(i); return i;
+  };
+  const grille = el('div', 'quand');
+  const bloc1 = el('div'), bloc2 = el('div');
+  grille.appendChild(bloc1); grille.appendChild(bloc2);
+  const lab = (parent, txt, id) => { const l = el('label', 'etiquette', txt); l.htmlFor = id; parent.appendChild(l); };
+  lab(bloc1, 'Réduction (%)', 'fidReduction');
+  const iRed = el('input'); iRed.type = 'number'; iRed.id = 'fidReduction'; iRed.inputMode = 'decimal'; iRed.min = 1; iRed.max = 100; iRed.value = D.reductionFidelite || 50; bloc1.appendChild(iRed);
+  lab(bloc2, 'Tous les … passages', 'fidPassages');
+  const iPas = el('input'); iPas.type = 'number'; iPas.id = 'fidPassages'; iPas.inputMode = 'numeric'; iPas.min = 2; iPas.max = 50; iPas.value = D.passagesPourOffre; bloc2.appendChild(iPas);
+  f.appendChild(grille);
+  champ('Compter les passages à partir du', 'fidDebut', 'date', D.debutOffreIso);
+  f.appendChild(el('div', 'ligne2', 'La réduction porte sur la prestation la plus chère. Les nouvelles règles s\'appliquent aussi aux passages déjà enregistrés depuis la date de début.'));
+  const bOk = el('button', 'gros secondaire', 'Enregistrer les règles'); bOk.id = 'btnFidRegles';
+  bOk.onclick = sauverReglesFidelite;
+  f.appendChild(bOk);
+  z.appendChild(f);
+}
+
+function sauverReglesFidelite() {
+  const r = { reduction: nombre($('fidReduction').value), passages: parseInt($('fidPassages').value, 10), debut: $('fidDebut').value };
+  if (!(r.reduction > 0 && r.reduction <= 100)) return message('👉 Réduction entre 1 et 100 %.');
+  if (!(r.passages >= 2 && r.passages <= 50)) return message('👉 Nombre de passages entre 2 et 50.');
+  if (!confirm('Appliquer : ' + r.reduction + ' % au ' + r.passages + 'e passage, en comptant depuis le ' + r.debut.split('-').reverse().join('/') + ' ?\n\nLes passages fidélité déjà enregistrés depuis cette date seront recalculés.')) return;
+  $('btnFidRegles').disabled = true;
+  api('fidelite_regles', { r }).then(j => { majTout(j.data); message('✅ Règles de fidélité enregistrées.'); })
+    .catch(e => erreur(e.horsLigne ? 'Pas d\'internet : réessaie quand le réseau revient.' : e))
+    .finally(() => { const b = $('btnFidRegles'); if (b) b.disabled = false; });
 }
 
 function afficherOffres() {
