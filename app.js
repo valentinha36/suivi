@@ -1274,10 +1274,10 @@ function afficherStats() {
   $('stVenues').textContent = cles.length;
   $('stNouvelles').textContent = nouvelles;
   $('stRetour').textContent = cles.length ? Math.round(reviennent / cles.length * 100) + ' %' : '–';
-  $('stRythme').textContent = mediane !== null ? mediane + ' j' : '–';
+  $('stRythme').textContent = mediane !== null ? (mediane <= 1 ? '1 jour' : mediane + ' jours') : '–';
   $('stExplication').textContent = cles.length
     ? reviennent + ' personne' + (reviennent > 1 ? 's' : '') + ' sur ' + cles.length + (reviennent > 1 ? ' sont venues' : ' est venue') + ' au moins deux fois sur la période.' +
-      (mediane !== null ? ' En général, ' + M('une cliente', 'un client') + ' revient tous les ' + mediane + ' jours.' : '')
+      (mediane !== null ? ' En général, ' + M('une cliente', 'un client') + ' revient ' + (mediane <= 1 ? 'tous les jours.' : 'tous les ' + mediane + ' jours.') : '')
     : 'Pas encore de saisies sur cette période.';
 
   // Prestations les plus demandées (une saisie « A + B » compte pour A et pour B)

@@ -358,6 +358,8 @@ body.sans-offres.sans-fidelite .m-offres-ou-fidelite { display: none !important;
 .table-recettes td, .table-recettes th { padding: 10px 10px; font-size: 13.5px; }
 .table-recettes td:nth-child(1), .table-recettes td:nth-child(2) { white-space: nowrap; }
 .entete-impression { display: none; }
+@media screen and (max-width: 560px) { .table-recettes th:nth-child(2), .table-recettes td:nth-child(2) { display: none; } }
+.carte .ligne1 > span:last-child:not(:first-child) { flex: 0 0 auto; white-space: nowrap; }
 .lien-carte { background: none; border: none; padding: 0; font: inherit; color: inherit; text-align: left; width: 100%; cursor: pointer; }
 .rang { display: inline-flex; width: 26px; height: 26px; border-radius: 8px; background: var(--teinte); color: var(--accent-texte); align-items: center; justify-content: center; font-size: 13px; font-weight: 800; margin-right: 10px; flex: 0 0 auto; }
 
