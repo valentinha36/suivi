@@ -3,15 +3,18 @@
 <head>
 <meta charset="utf-8">
 <title>Suivi des prestations</title>
-<meta name="theme-color" content="#5b2a4e">
+<meta name="theme-color" content="#3b2a4f">
+<meta name="color-scheme" content="light dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Suivi">
 <link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 <header class="appbar">
@@ -229,6 +232,29 @@
       <div class="stat m-achats">Dépensé (TTC)<b id="anAchats">0 €</b></div>
     </div>
     <div class="stat m-achats stat-large">Il reste (encaissé − dépensé)<b id="anReste">0 €</b></div>
+    <div class="stats">
+      <div class="stat">Prestations<b id="anNb">0</b></div>
+      <div class="stat">Panier moyen<b id="anPanier">0 €</b></div>
+    </div>
+    <div class="carte graphique">
+      <div class="ligne1"><span>Encaissé par mois</span></div>
+      <div class="legende" id="graphLegende"></div>
+      <div id="graphMois" class="graph-zone"></div>
+      <div class="graph-detail" id="graphDetail"></div>
+      <div class="ligne2" id="graphCompare"></div>
+    </div>
+    <div class="menu" style="margin-top:10px">
+      <button class="menu-ligne" onclick="vue('recettes')">
+        <span class="menu-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H20v15H5.5A1.5 1.5 0 0 0 4 19.5z"></path><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H20v-3M8 7h8M8 11h6"></path></svg></span>
+        <span class="menu-texte"><b>Livre des recettes</b><small>Export pour Excel ou PDF, prêt pour l'URSSAF</small></span>
+        <span class="chevron">›</span>
+      </button>
+      <button class="menu-ligne" onclick="vue('stats')">
+        <span class="menu-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z"></path><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"></path></svg></span>
+        <span class="menu-texte"><b>Statistiques <span data-mot="clientes|clients">clientes</span></b><small>Prestations phares, fidélité, meilleurs <span data-mot="clientes|clients">clientes</span></small></span>
+        <span class="chevron">›</span>
+      </button>
+    </div>
     <div id="carteSeuil" class="carte jauge cache"></div>
     <div id="carteUrssaf" class="carte cache"></div>
     <h2 class="titre-section m-paiement">Encaissé par mode de paiement</h2>
@@ -239,8 +265,62 @@
     <div class="table-boite">
       <table><thead><tr><th>Mois</th><th class="n">Encaissé</th><th class="n m-achats">Dépensé</th><th class="n m-achats">Reste</th></tr></thead><tbody id="tableMois"></tbody></table>
     </div>
-    <h2 class="titre-section">Dernières saisies</h2>
+    <h2 class="titre-section">Historique</h2>
+    <div class="champ-recherche">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+      <input type="search" id="rechercheHisto" placeholder="Nom, prestation, date, montant…" oninput="afficherHistorique()" aria-label="Rechercher dans l'historique" autocomplete="off">
+    </div>
+    <p id="histoResume" class="discret"></p>
     <div id="recentes"></div>
+  </section>
+
+  <!-- ============ LIVRE DES RECETTES ============ -->
+  <section id="v-recettes" class="cache">
+    <button class="lien retour ne-pas-imprimer" onclick="vue('bilan')">← Bilan</button>
+    <div class="entete-impression" id="recEntete"></div>
+    <h1 class="titre-ecran ne-pas-imprimer">Livre des recettes</h1>
+    <div class="quand ne-pas-imprimer">
+      <div><label class="etiquette" for="recAnnee">Année</label><select id="recAnnee" onchange="afficherRecettes()"></select></div>
+      <div><label class="etiquette" for="recMois">Mois</label><select id="recMois" onchange="afficherRecettes()"></select></div>
+    </div>
+    <div class="stats" style="margin-top:12px">
+      <div class="stat vedette">Total encaissé<b id="recTotal">0 €</b></div>
+      <div class="stat">Recettes<b id="recNb">0</b></div>
+    </div>
+    <div class="actions-export ne-pas-imprimer">
+      <button class="gros" onclick="exporterRecettes()">Télécharger pour Excel</button>
+      <button class="gros secondaire" onclick="imprimerRecettes()">Imprimer ou enregistrer en PDF</button>
+    </div>
+    <p class="discret ne-pas-imprimer">Montants réellement encaissés (après réduction), dans l'ordre chronologique. À garder pour l'URSSAF ou ton comptable.</p>
+    <div class="table-boite">
+      <table class="table-recettes"><thead><tr><th>Date</th><th>N°</th><th data-mot="Cliente|Client">Cliente</th><th>Prestation</th><th class="n">Montant</th><th class="m-paiement">Règlement</th></tr></thead><tbody id="tableRecettes"></tbody></table>
+    </div>
+  </section>
+
+  <!-- ============ STATISTIQUES ============ -->
+  <section id="v-stats" class="cache">
+    <button class="lien retour" onclick="vue('bilan')">← Bilan</button>
+    <h1 class="titre-ecran">Statistiques</h1>
+    <div class="filtres" id="periodesStats">
+      <button class="puce on" data-p="annee">Cette année</button>
+      <button class="puce" data-p="12m">12 derniers mois</button>
+      <button class="puce" data-p="tout">Depuis le début</button>
+    </div>
+    <div class="stats" style="margin-top:10px">
+      <div class="stat"><span data-mot="Clientes venues|Clients venus">Clientes venues</span><b id="stVenues">0</b></div>
+      <div class="stat"><span data-mot="Nouvelles|Nouveaux">Nouvelles</span><b id="stNouvelles">0</b></div>
+      <div class="stat">Reviennent<b id="stRetour">0 %</b></div>
+      <div class="stat">Rythme moyen<b id="stRythme">–</b></div>
+    </div>
+    <p class="discret" id="stExplication"></p>
+    <h2 class="titre-section">Prestations les plus demandées</h2>
+    <div id="stPrestations" class="carte"></div>
+    <h2 class="titre-section"><span data-mot="Meilleures clientes|Meilleurs clients">Meilleures clientes</span></h2>
+    <div id="stMeilleures"></div>
+    <h2 class="titre-section">Nombre de visites par personne</h2>
+    <div id="stFrequence" class="carte"></div>
+    <h2 class="titre-section">Jours les plus chargés</h2>
+    <div id="stJours" class="carte"></div>
   </section>
 
   <!-- ============ PLUS ============ -->
@@ -256,6 +336,16 @@
       <button class="menu-ligne m-offres-ou-fidelite" onclick="vue('offres')">
         <span class="menu-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="13" rx="2"></rect><path d="M12 8v13M3 12h18M12 8c-2-4-6-4-6-1.5S9 8 12 8zm0 0c2-4 6-4 6-1.5S15 8 12 8z"></path></svg></span>
         <span class="menu-texte"><b>Offres et fidélité</b><small>Réductions, anniversaires, parrainage</small></span>
+        <span class="chevron">›</span>
+      </button>
+<button class="menu-ligne" onclick="vue('recettes')">
+        <span class="menu-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H20v15H5.5A1.5 1.5 0 0 0 4 19.5z"></path><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H20v-3M8 7h8M8 11h6"></path></svg></span>
+        <span class="menu-texte"><b>Livre des recettes</b><small>Export pour Excel ou PDF, prêt pour l'URSSAF</small></span>
+        <span class="chevron">›</span>
+      </button>
+      <button class="menu-ligne" onclick="vue('stats')">
+        <span class="menu-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z"></path><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"></path></svg></span>
+        <span class="menu-texte"><b>Statistiques <span data-mot="clientes|clients">clientes</span></b><small>Prestations phares, fidélité, meilleurs <span data-mot="clientes|clients">clientes</span></small></span>
         <span class="chevron">›</span>
       </button>
       <button class="menu-ligne m-achats" onclick="vue('achats')">
@@ -390,6 +480,6 @@
   </button>
 </nav>
 <div id="msg" class="msg" role="status"></div>
-<script src="app.js?v=15"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>

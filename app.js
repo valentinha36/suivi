@@ -194,6 +194,11 @@ function init() {
       document.querySelectorAll('#filtres .puce').forEach(x => x.classList.toggle('on', x === b));
       afficherClientes();
     });
+    document.querySelectorAll('#periodesStats .puce').forEach(b => b.onclick = () => {
+      periodeStats = b.dataset.p;
+      document.querySelectorAll('#periodesStats .puce').forEach(x => x.classList.toggle('on', x === b));
+      afficherStats();
+    });
     initFait = true;
   }
   construirePrestations();
@@ -217,10 +222,12 @@ function majTout(d) {
 function rafraichir() {
   if (vueActive === 'accueil') afficherAccueil();
   afficherClientes(); afficherBilan(); afficherTarifs(); afficherOffres(); afficherAchats(); remplirNoms();
+  if (vueActive === 'recettes') afficherRecettes();
+  if (vueActive === 'stats') afficherStats();
 }
 
 /* Écrans et onglet du bas correspondant (les sous-écrans allument leur onglet parent) */
-const ONGLET_DE = { accueil: 'accueil', nouvelle: 'nouvelle', clientes: 'clientes', fiche: 'clientes', bilan: 'bilan', plus: 'plus', tarifs: 'plus', offres: 'plus', achats: 'plus' };
+const ONGLET_DE = { accueil: 'accueil', nouvelle: 'nouvelle', clientes: 'clientes', fiche: 'clientes', bilan: 'bilan', plus: 'plus', tarifs: 'plus', offres: 'plus', achats: 'plus', recettes: 'bilan', stats: 'bilan' };
 function vue(v) {
   vueActive = v;
   Object.keys(ONGLET_DE).forEach(x => $('v-' + x).classList.toggle('cache', x !== v));
@@ -228,6 +235,8 @@ function vue(v) {
   document.body.classList.toggle('en-saisie', v === 'nouvelle' && !$('formulaire').classList.contains('cache'));
   if (v === 'tarifs') afficherTarifs();
   if (v === 'accueil') afficherAccueil();
+  if (v === 'recettes') afficherRecettes();
+  if (v === 'stats') afficherStats();
   window.scrollTo(0, 0);
 }
 
@@ -994,14 +1003,15 @@ function afficherAchats() {
 }
 
 /* ======================= BILAN ======================= */
-function barres(zone, valeurs, icone, vide) {
+function barres(zone, valeurs, icone, vide, format, garderOrdre) {
   zone.innerHTML = '';
-  const cles = Object.keys(valeurs).filter(k => valeurs[k]).sort((a, b) => valeurs[b] - valeurs[a]);
-  const total = cles.reduce((s, k) => s + valeurs[k], 0), max = cles.length ? valeurs[cles[0]] : 0;
+  const cles = Object.keys(valeurs).filter(k => valeurs[k]);
+  if (!garderOrdre) cles.sort((a, b) => valeurs[b] - valeurs[a]);
+  const total = cles.reduce((s, k) => s + valeurs[k], 0), max = cles.reduce((m, k) => Math.max(m, valeurs[k]), 0);
   if (!cles.length) zone.appendChild(el('div', 'ligne2', vide));
   cles.forEach(c => {
     const v = valeurs[c], k = el('div', 'cat');
-    const l = el('div', 'ligne1'); l.appendChild(el('span', '', icone(c) + ' ' + c)); l.appendChild(el('span', '', euros(v) + ' · ' + Math.round(v / total * 100) + ' %'));
+    const l = el('div', 'ligne1'); l.appendChild(el('span', '', (icone(c) ? icone(c) + ' ' : '') + c)); l.appendChild(el('span', '', (format ? format(v) : euros(v)) + ' · ' + Math.round(v / total * 100) + ' %'));
     k.appendChild(l);
     const b = el('div', 'barre'); b.style.width = Math.max(4, v / max * 100) + '%'; k.appendChild(b);
     zone.appendChild(k);
@@ -1059,8 +1069,252 @@ function afficherBilan() {
   barres($('paiements'), D.parPaiement, m => ICONES_PAIEMENT[m] || '💰', 'Aucun encaissement cette année.');
   barres($('categories'), D.parCategorie, iconeCat, 'Aucun achat enregistré cette année. Ajoute-les dans l\'onglet 🧾 Achats.');
 
+  const lignesAn = D.journal.filter(r => anneeDe(r) === D.annee);
+  const payees = lignesAn.filter(r => typeof r.caApres === 'number');
+  $('anNb').textContent = lignesAn.length;
+  $('anPanier').textContent = payees.length ? euros(payees.reduce((s, r) => s + r.caApres, 0) / payees.length) : '–';
+  graphiqueMois();
+  afficherHistorique();
+}
+
+/* ======================= CHIFFRES CALCULÉS DEPUIS L'HISTORIQUE ======================= */
+const montant = r => typeof r.caApres === 'number' ? r.caApres : 0;
+const anneeDe = r => Number(String(r.iso).slice(0, 4));
+const moisDe = r => Number(String(r.iso).slice(5, 7)) - 1;
+const cleTri = r => r.iso + ' ' + (heureVersChamp(r.heure) || '00:00') + ' ' + String(r.id).replace(/\d+/g, n => n.padStart(6, '0'));
+const pct = (a, b) => b ? Math.round((a - b) / b * 100) : null;
+const signe = n => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n) + ' %';
+
+/** CA et nombre de prestations par mois pour une année (jusqu'au jour « mm-jj » inclus si donné). */
+function parMois(annee, jusquA) {
+  const m = Array.from({ length: 12 }, () => ({ ca: 0, nb: 0, payees: 0 }));
+  D.journal.forEach(r => {
+    if (anneeDe(r) !== annee || (jusquA && r.iso.slice(5) > jusquA)) return;
+    const x = m[moisDe(r)]; x.ca += montant(r); x.nb++; if (typeof r.caApres === 'number') x.payees++;
+  });
+  return m;
+}
+
+/* Graphique : barres par mois, année en cours (couleur du salon) et année précédente (gris) */
+let moisGraph = null;
+function graduation(max) {
+  const brut = max / 3, p = Math.pow(10, Math.floor(Math.log10(brut || 1)));
+  const pas = [1, 2, 2.5, 5, 10].map(k => k * p).find(k => k >= brut) || 10 * p;
+  return { pas, haut: Math.max(pas, Math.ceil(max / pas) * pas) };
+}
+const eurosCourt = v => v >= 1000 ? (Math.round(v / 100) / 10).toLocaleString('fr-FR') + ' k€' : Math.round(v) + ' €';
+function graphiqueMois() {
+  const an = D.annee, cur = parMois(an), prec = parMois(an - 1);
+  const aPrec = prec.some(m => m.nb);
+  if (moisGraph === null) moisGraph = new Date().getMonth();
+  const W = 340, H = 168, G = 40, B = 22, T = 8, NS = 'http://www.w3.org/2000/svg';
+  const max = Math.max(1, ...cur.map(m => m.ca), ...(aPrec ? prec.map(m => m.ca) : [0]));
+  const { pas, haut } = graduation(max);
+  const y = v => T + (H - T - B) * (1 - v / haut);
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', 'Encaissé par mois en ' + an + (aPrec ? ', comparé à ' + (an - 1) : ''));
+  const add = (tag, attrs, txt) => {
+    const e = document.createElementNS(NS, tag);
+    Object.keys(attrs).forEach(k => e.setAttribute(k, attrs[k]));
+    if (txt !== undefined) e.textContent = txt;
+    svg.appendChild(e); return e;
+  };
+  const slot = (W - G) / 12;
+  add('rect', { class: 'g-bande', x: G + moisGraph * slot + 1, y: T - 4, width: slot - 2, height: H - T - B + 8, rx: 6 });
+  for (let v = 0; v <= haut + 1e-9; v += pas) {
+    add('line', { class: 'g-grille', x1: G, x2: W, y1: y(v), y2: y(v) });
+    add('text', { class: 'g-txt', x: G - 6, y: y(v) + 3.5, 'text-anchor': 'end' }, eurosCourt(v));
+  }
+  // Barre arrondie en haut seulement, posée sur la ligne du zéro
+  const barre = (x, w, v, cls) => {
+    if (!v) return;
+    const h = Math.max(2, y(0) - y(v)), r = Math.min(4, w / 2, h), yt = y(0) - h;
+    add('path', { class: cls, d: 'M' + x + ',' + y(0) + 'V' + (yt + r) + 'Q' + x + ',' + yt + ' ' + (x + r) + ',' + yt +
+      'H' + (x + w - r) + 'Q' + (x + w) + ',' + yt + ' ' + (x + w) + ',' + (yt + r) + 'V' + y(0) + 'Z' });
+  };
+  const bw = aPrec ? Math.min(10, (slot - 8) / 2) : Math.min(16, slot - 8);
+  for (let i = 0; i < 12; i++) {
+    const cx = G + i * slot + slot / 2;
+    if (aPrec) { barre(cx - bw - 1, bw, prec[i].ca, 'g-prec'); barre(cx + 1, bw, cur[i].ca, 'g-cur'); }
+    else barre(cx - bw / 2, bw, cur[i].ca, 'g-cur');
+    add('text', { class: 'g-txt' + (i === moisGraph ? ' on' : ''), x: cx, y: H - 6, 'text-anchor': 'middle' }, MOIS[i][0]);
+    const cible = add('rect', { class: 'g-cible', x: G + i * slot, y: 0, width: slot, height: H });
+    cible.addEventListener('click', () => { moisGraph = i; graphiqueMois(); });
+    cible.addEventListener('mouseenter', () => { if (matchMedia('(hover: hover)').matches && moisGraph !== i) { moisGraph = i; graphiqueMois(); } });
+  }
+  const z = $('graphMois'); z.innerHTML = ''; z.appendChild(svg);
+
+  const lg = $('graphLegende'); lg.innerHTML = '';
+  if (aPrec) [[an, 'var(--rose)'], [an - 1, 'var(--annee-prec)']].forEach(([a, c]) => {
+    const sp = el('span'), i = el('i'); i.style.background = c; sp.appendChild(i); sp.appendChild(document.createTextNode(a)); lg.appendChild(sp);
+  });
+  const m = cur[moisGraph], p = prec[moisGraph], d = $('graphDetail'); d.innerHTML = '';
+  const l1 = el('div'); l1.appendChild(el('b', '', MOIS[moisGraph] + ' ' + an + ' : ' + euros(m.ca)));
+  l1.appendChild(document.createTextNode(' · ' + m.nb + ' prestation' + (m.nb > 1 ? 's' : '') + (m.payees ? ' · panier moyen ' + euros(m.ca / m.payees) : '')));
+  d.appendChild(l1);
+  if (aPrec) {
+    const e = pct(m.ca, p.ca);
+    d.appendChild(el('div', '', MOIS[moisGraph] + ' ' + (an - 1) + ' : ' + euros(p.ca) + (e !== null && m.ca ? ' (' + signe(e) + ')' : '')));
+  }
+  const mmjj = D.aujourdHuiIso.slice(5);
+  const tot = a => parMois(a, mmjj).reduce((s, x) => s + x.ca, 0);
+  const t1 = tot(an), t0 = aPrec ? tot(an - 1) : 0, ev = pct(t1, t0);
+  $('graphCompare').textContent = aPrec
+    ? 'Depuis le 1er janvier : ' + euros(t1) + ' contre ' + euros(t0) + ' à la même date en ' + (an - 1) + (ev !== null ? ' (' + signe(ev) + ').' : '.')
+    : 'Touche un mois pour voir son détail. La comparaison avec l\'année précédente apparaîtra quand il y aura des saisies sur deux années.';
+}
+
+/* ======================= HISTORIQUE (recherche) ======================= */
+function afficherHistorique() {
+  const q = norm($('rechercheHisto').value);
   const box = $('recentes'); box.innerHTML = '';
-  D.journal.slice(-20).reverse().forEach(r => box.appendChild(carteSaisie(r, true)));
+  let liste = D.journal.slice().sort((a, b) => cleTri(b).localeCompare(cleTri(a)));
+  if (!q) {
+    liste = liste.slice(0, 20);
+    $('histoResume').textContent = liste.length ? 'Les ' + liste.length + ' dernières saisies. Cherche un nom, une prestation, une date (ex. 03/2026 ou mars 2026) ou un montant.' : '';
+  } else {
+    const num = /^\d+([.,]\d+)?$/.test(q) ? nombre(q) : null;
+    liste = liste.filter(r => {
+      if (num !== null && (Math.abs(montant(r) - num) < 0.005 || r.prix === num)) return true;
+      return norm([r.client, r.date, r.prestation, r.libelle, r.paiement, MOIS[moisDe(r)] + ' ' + anneeDe(r)].join(' | ')).includes(q);
+    });
+    const total = liste.reduce((s, r) => s + montant(r), 0);
+    $('histoResume').textContent = liste.length
+      ? liste.length + ' saisie' + (liste.length > 1 ? 's' : '') + ' · ' + euros(total) + ' encaissé' + (liste.length > 60 ? ' · les 60 plus récentes affichées' : '')
+      : 'Aucune saisie ne correspond.';
+  }
+  liste.slice(0, 60).forEach(r => box.appendChild(carteSaisie(r, true)));
+}
+
+/* ======================= LIVRE DES RECETTES ======================= */
+function lignesRecettes() {
+  const an = Number($('recAnnee').value), m = $('recMois').value;
+  // N° de pièce : ordre chronologique dans l'année
+  const annee = D.journal.filter(r => anneeDe(r) === an).sort((a, b) => cleTri(a).localeCompare(cleTri(b)));
+  annee.forEach((r, i) => { r._num = an + '-' + String(i + 1).padStart(4, '0'); });
+  return annee.filter(r => m === '' || moisDe(r) === Number(m));
+}
+const periodeRecettes = () => ($('recMois').value === '' ? 'année ' : MOIS[Number($('recMois').value)].toLowerCase() + ' ') + $('recAnnee').value;
+function afficherRecettes() {
+  const sa = $('recAnnee'), sm = $('recMois');
+  const annees = Array.from(new Set(D.journal.map(anneeDe).concat([D.annee]))).sort((a, b) => b - a);
+  const anAvant = sa.value, moisAvant = sm.value;
+  sa.innerHTML = ''; annees.forEach(a => sa.appendChild(new Option(a, a)));
+  sa.value = anAvant && annees.includes(Number(anAvant)) ? anAvant : String(D.annee);
+  if (!sm.options.length) { sm.appendChild(new Option('Toute l\'année', '')); MOIS.forEach((n, i) => sm.appendChild(new Option(n, i))); }
+  sm.value = moisAvant;
+  const lignes = lignesRecettes();
+  const total = lignes.reduce((s, r) => s + montant(r), 0);
+  $('recTotal').textContent = euros(total); $('recNb').textContent = lignes.length;
+  const tb = $('tableRecettes'); tb.innerHTML = '';
+  if (!lignes.length) { const tr = el('tr'), td = el('td', '', 'Aucune recette sur cette période.'); td.colSpan = 6; tr.appendChild(td); tb.appendChild(tr); }
+  lignes.forEach(r => {
+    const tr = el('tr');
+    tr.appendChild(el('td', '', r.date)); tr.appendChild(el('td', '', r._num)); tr.appendChild(el('td', '', r.client));
+    tr.appendChild(el('td', '', r.prestation + (r.libelle ? ' (' + (r.fidelite ? 'fidélité ' : '') + r.libelle + ')' : '')));
+    tr.appendChild(el('td', 'n', r.caApres !== null ? euros(r.caApres) : '–'));
+    tr.appendChild(el('td', 'm-paiement', r.paiement || ''));
+    tb.appendChild(tr);
+  });
+  const tr = el('tr', 'total-ligne'), td = el('td', '', 'Total ' + periodeRecettes()); td.colSpan = 4;
+  tr.appendChild(td); tr.appendChild(el('td', 'n', euros(total))); tr.appendChild(el('td', 'm-paiement', '')); tb.appendChild(tr);
+  const e = $('recEntete'); e.innerHTML = '';
+  e.appendChild(el('h1', '', 'Livre des recettes – ' + periodeRecettes()));
+  e.appendChild(el('p', '', [D.reglages && D.reglages.nomSalon, D.reglages && D.reglages.metier].filter(Boolean).join(' · ')));
+  e.appendChild(el('p', '', 'Montants encaissés TTC, dans l\'ordre chronologique. Édité le ' + new Date().toLocaleDateString('fr-FR') + '.'));
+}
+function exporterRecettes() {
+  const lignes = lignesRecettes();
+  const champ = v => { const t = String(v === null || v === undefined ? '' : v); return /[;"\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+  const nombreFr = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+  const csv = [['Date', 'N° de pièce', M('Cliente', 'Client'), 'Nature de la prestation', 'Montant encaissé (€)', 'Mode de règlement', 'Réduction appliquée']]
+    .concat(lignes.map(r => [r.date, r._num, r.client, r.prestation, r.caApres !== null ? nombreFr(r.caApres) : '', r.paiement || '', r.libelle || '']))
+    .concat([['', '', '', 'TOTAL', nombreFr(lignes.reduce((s, r) => s + montant(r), 0)), '', '']])
+    .map(l => l.map(champ).join(';')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Livre des recettes - ' + periodeRecettes() + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  message('📄 Fichier téléchargé : il s\'ouvre avec Excel, Numbers ou Google Sheets.');
+}
+function imprimerRecettes() { window.print(); }
+
+/* ======================= STATISTIQUES CLIENTS ======================= */
+let periodeStats = 'annee';
+const JOURS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+const jourMs = iso => new Date(iso + 'T12:00:00').getTime();
+function afficherStats() {
+  if (!D) return;
+  const auj = jourMs(D.aujourdHuiIso);
+  const dansPeriode = r => periodeStats === 'tout' ? true
+    : periodeStats === 'annee' ? anneeDe(r) === D.annee
+    : r.iso <= D.aujourdHuiIso && auj - jourMs(r.iso) < 365 * 864e5;
+  const L = D.journal.filter(dansPeriode);
+  const perso = L.filter(r => !GENERIQUES.includes(r.cle));
+
+  // Première visite de chaque personne (sur tout l'historique)
+  const premiere = {};
+  D.journal.forEach(r => { if (!premiere[r.cle] || r.iso < premiere[r.cle]) premiere[r.cle] = r.iso; });
+  const parCle = {};
+  perso.forEach(r => { (parCle[r.cle] = parCle[r.cle] || []).push(r); });
+  const cles = Object.keys(parCle);
+  const nouvelles = cles.filter(k => parCle[k].some(r => r.iso === premiere[k])).length;
+  const reviennent = cles.filter(k => parCle[k].length >= 2).length;
+  // Rythme : écart médian (en jours) entre deux visites d'une même personne
+  const ecarts = [];
+  cles.forEach(k => {
+    const jours = Array.from(new Set(parCle[k].map(r => r.iso))).sort();
+    for (let i = 1; i < jours.length; i++) ecarts.push(Math.round((jourMs(jours[i]) - jourMs(jours[i - 1])) / 864e5));
+  });
+  ecarts.sort((a, b) => a - b);
+  const mediane = ecarts.length ? ecarts[Math.floor(ecarts.length / 2)] : null;
+  $('stVenues').textContent = cles.length;
+  $('stNouvelles').textContent = nouvelles;
+  $('stRetour').textContent = cles.length ? Math.round(reviennent / cles.length * 100) + ' %' : '–';
+  $('stRythme').textContent = mediane !== null ? mediane + ' j' : '–';
+  $('stExplication').textContent = cles.length
+    ? reviennent + ' personne' + (reviennent > 1 ? 's' : '') + ' sur ' + cles.length + (reviennent > 1 ? ' sont venues' : ' est venue') + ' au moins deux fois sur la période.' +
+      (mediane !== null ? ' En général, ' + M('une cliente', 'un client') + ' revient tous les ' + mediane + ' jours.' : '')
+    : 'Pas encore de saisies sur cette période.';
+
+  // Prestations les plus demandées (une saisie « A + B » compte pour A et pour B)
+  const prestas = {};
+  L.forEach(r => String(r.prestation).split(' + ').map(x => x.trim()).filter(Boolean).forEach(p => { prestas[p] = (prestas[p] || 0) + 1; }));
+  const top = {};
+  Object.keys(prestas).sort((a, b) => prestas[b] - prestas[a]).slice(0, 8).forEach(k => { top[k] = prestas[k]; });
+  barres($('stPrestations'), top, () => '', 'Aucune prestation sur cette période.', v => v + ' fois');
+
+  // Meilleures clientes (encaissé sur la période)
+  const z = $('stMeilleures'); z.innerHTML = '';
+  const classement = cles.map(k => ({ k, ca: parCle[k].reduce((s, r) => s + montant(r), 0), nb: parCle[k].length }))
+    .sort((a, b) => b.ca - a.ca || b.nb - a.nb).slice(0, 10);
+  if (!classement.length) z.appendChild(el('p', 'discret', 'Personne sur cette période.'));
+  classement.forEach((x, i) => {
+    const c = D.clientes.find(y => y.cle === x.k);
+    const k = el('div', 'carte' + (c ? ' cliquable' : ''));
+    const l1 = el('div', 'ligne1'), g = el('span');
+    g.style.display = 'flex'; g.style.alignItems = 'center';
+    g.appendChild(el('span', 'rang', String(i + 1))); g.appendChild(el('span', '', c ? c.nom : parCle[x.k][0].client));
+    l1.appendChild(g); l1.appendChild(el('span', '', euros(x.ca)));
+    k.appendChild(l1);
+    k.appendChild(el('div', 'ligne2', x.nb + ' passage' + (x.nb > 1 ? 's' : '') + ' · panier moyen ' + euros(x.ca / x.nb) + (c && c.derniere ? ' · vu' + M('e', '') + ' le ' + c.derniere : '')));
+    if (c) k.onclick = () => ouvrirFiche(c.cle);
+    z.appendChild(k);
+  });
+
+  // Nombre de visites par personne
+  const tranches = { '1 visite': 0, '2 à 4 visites': 0, '5 à 9 visites': 0, '10 visites et plus': 0 };
+  cles.forEach(k => { const n = parCle[k].length; tranches[n === 1 ? '1 visite' : n < 5 ? '2 à 4 visites' : n < 10 ? '5 à 9 visites' : '10 visites et plus']++; });
+  barres($('stFrequence'), tranches, () => '', 'Personne sur cette période.', v => v + ' pers.', true);
+
+  // Jours les plus chargés
+  const jours = {};
+  [1, 2, 3, 4, 5, 6, 0].forEach(j => { jours[JOURS[j]] = 0; });
+  L.forEach(r => { jours[JOURS[new Date(r.iso + 'T12:00:00').getDay()]]++; });
+  barres($('stJours'), jours, () => '', 'Aucune prestation sur cette période.', v => v + ' prestation' + (v > 1 ? 's' : ''));
 }
 
 /* ---------- Démarrage ---------- */
