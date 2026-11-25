@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 <header><div class="titre" id="titre">💅 Suivi des prestations</div><div class="sous" id="sousTitre"></div></header>
@@ -47,6 +47,10 @@
       <div id="prestations" class="grille"></div>
       <h3 class="sous-titre m-options">+ Options</h3>
       <div id="options" class="grille options m-options"></div>
+      <div id="blocDeplacement" class="cache">
+        <h3 class="sous-titre">🚗 À domicile</h3>
+        <div id="choixDeplacement" class="grille options"></div>
+      </div>
 
       <h2><span class="etape">3</span>Prix<span class="m-paiement">&nbsp;et paiement</span></h2>
       <div class="total">
@@ -78,6 +82,7 @@
       <h2 id="succesTitre" style="justify-content:center"></h2>
       <p id="succesDetail" style="font-size:17px"></p>
       <div id="succesMontant" class="encaisser"></div>
+      <a class="gros secondaire bouton-lien cache" id="succesAvis" href="#">⭐ Demander un avis Google</a>
       <button class="gros" onclick="nouvelleSaisie()">➕ Nouvelle prestation</button>
     </div>
   </section>
@@ -133,6 +138,8 @@
       <div class="contact" id="ficheContact">
         <a class="bouton-contact" id="ficheAppel" href="#">📞 Appeler</a>
         <a class="bouton-contact" id="ficheSms" href="#">💬 SMS</a>
+        <a class="bouton-contact cache" id="ficheRelance" href="#">💤 Relancer</a>
+        <a class="bouton-contact cache" id="ficheAvis" href="#">⭐ Avis Google</a>
       </div>
       <label class="etiquette" for="ficheNomFamille">Nom de famille</label>
       <input type="text" id="ficheNomFamille" placeholder="(facultatif)">
@@ -223,12 +230,15 @@
       <div class="stat">Prestations<b id="jourNb">0</b></div>
       <div class="stat">Encaissé<b id="jourCa">0 €</b></div>
     </div>
+    <div id="carteObjectif" class="carte jauge cache"></div>
     <h2 id="titreBilanAnnee">Bilan de l'année</h2>
     <div class="stats">
       <div class="stat vedette">Encaissé (TTC)<b id="anCa">0 €</b></div>
       <div class="stat m-achats">Dépensé (TTC)<b id="anAchats">0 €</b></div>
     </div>
     <div class="stat vedette m-achats" style="margin-top:10px">Il reste (encaissé − dépensé)<b id="anReste">0 €</b></div>
+    <div id="carteSeuil" class="carte jauge cache"></div>
+    <div id="carteUrssaf" class="carte cache"></div>
     <h2 class="m-paiement">💳 Encaissé par mode de paiement</h2>
     <div id="paiements" class="carte m-paiement"></div>
     <h2 class="m-achats">Dépenses par catégorie</h2>
@@ -279,6 +289,6 @@
   <button id="t-bilan" onclick="vue('bilan')"><span>📊</span>Bilan</button>
 </nav>
 <div id="msg" class="msg"></div>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>

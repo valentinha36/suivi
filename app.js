@@ -161,7 +161,12 @@ function charger() {
 
 let initFait = false;
 function init() {
-  if (D.reglages && D.reglages.nomSalon) { $('titre').textContent = icone() + ' ' + D.reglages.nomSalon; document.title = D.reglages.nomSalon; }
+  if (D.reglages && D.reglages.nomSalon) {
+    const t = $('titre'); t.textContent = '';
+    if (P().logo) { const img = el('img', 'logo'); img.src = P().logo; img.alt = ''; img.onerror = () => img.remove(); t.appendChild(img); }
+    t.appendChild(document.createTextNode((P().logo ? '' : icone() + ' ') + D.reglages.nomSalon));
+    document.title = D.reglages.nomSalon;
+  }
   appliquerReglages();
   $('sousTitre').textContent = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   document.querySelectorAll('.debutOffre').forEach(s => s.textContent = D.debutOffre);
@@ -221,7 +226,7 @@ function nouvelleSaisie() {
   $('clienteChoisie').classList.add('cache'); $('clienteRecherche').classList.remove('cache');
   $('formulaire').classList.remove('cache'); $('succes').classList.add('cache');
   $('btnEnregistrer').disabled = false; $('btnEnregistrer').textContent = '✔ Enregistrer';
-  document.querySelectorAll('#prestations .presta, #options .presta').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('#prestations .presta, #options .presta, #choixDeplacement .presta').forEach(b => b.classList.remove('on'));
   document.querySelectorAll('#choixPaiement .puce').forEach(b => b.classList.remove('on'));
   construireChoixOffres();
   maintenant(); filtrerClientes(); majResume();
@@ -287,6 +292,23 @@ function construirePrestations(garderChoix) {
     };
     (t.option ? zO : zP).appendChild(b);
   });
+  construireDeplacement();
+}
+
+function construireDeplacement() {
+  const z = $('choixDeplacement'); z.innerHTML = '';
+  const prix = P().deplacement;
+  $('blocDeplacement').classList.toggle('cache', !prix);
+  if (!prix) return;
+  const b = el('button', 'presta' + (choisis.some(x => x.nom === 'Déplacement') ? ' on' : ''), 'Déplacement');
+  b.appendChild(el('b', '', '+ ' + euros(prix)));
+  b.onclick = () => {
+    const i = choisis.findIndex(x => x.nom === 'Déplacement');
+    if (i >= 0) { choisis.splice(i, 1); b.classList.remove('on'); } else { choisis.push({ nom: 'Déplacement', prix }); b.classList.add('on'); }
+    if (!prixManuel) $('prix').value = choisis.length ? sommeChoisis() : '';
+    majResume();
+  };
+  z.appendChild(b);
 }
 
 function construirePaiements(zone, quandChoisi) {
@@ -384,6 +406,10 @@ function enregistrer() {
 }
 
 function afficherSucces(icone, titre, detail, montant) {
+  const bA = $('succesAvis');
+  const c = cliente && D.clientes.find(x => x.cle === cliente.cle);
+  bA.classList.toggle('cache', !P().avis || !cliente);
+  if (P().avis && cliente) bA.href = lienSms(c && c.tel, texteAvis(cliente.nom));
   $('formulaire').classList.add('cache'); $('succes').classList.remove('cache');
   $('succesIcone').textContent = icone; $('succesTitre').textContent = titre; $('succesDetail').textContent = detail;
   $('succesMontant').textContent = 'À encaisser : ' + euros(montant) + (paiementChoisi ? '  ' + (ICONES_PAIEMENT[paiementChoisi] || '') : '');
@@ -400,19 +426,54 @@ const mod = k => !(D && D.reglages && D.reglages.modules && D.reglages.modules[k
 const estClient = () => !!(D && D.reglages && D.reglages.mot === 'Client');
 const M = (fem, masc) => estClient() ? masc : fem; // ex. M('cliente', 'client')
 const icone = () => (D && D.reglages && D.reglages.icone) || '💅';
+const P = () => (D && D.reglages && D.reglages.plus) || {};
+const nomSalon = () => (D && D.reglages && D.reglages.nomSalon) || 'notre salon';
+
+/* Couleurs de l'application (réglage « Couleur de l'application ») */
+const THEMES = {
+  'Bleu nuit': ['#1e3a5f', '#3b82c4', '#6aa8dc', '#e8f1fa', '#14284a', '#1e4f8a', '#245f9e'],
+  'Vert sauge': ['#3d5a4a', '#6b9a7d', '#93b89f', '#ecf4ee', '#2f4a3c', '#4f7a62', '#4f7a62'],
+  'Noir et or': ['#1f1a17', '#b08d57', '#cfb27d', '#f6f0e6', '#111111', '#2b2420', '#8a6b3c'],
+  'Terracotta': ['#6b3a2a', '#c8643b', '#e08b66', '#fbede6', '#5a2f22', '#9a4a30', '#a14d2b'],
+  'Lavande': ['#4b3f72', '#8a74c9', '#ab9be0', '#f1edfb', '#3a2f5e', '#6a5aa8', '#6a58ac'],
+};
+function appliquerTheme() {
+  const t = THEMES[P().couleur], st = document.documentElement.style;
+  ['--prune', '--rose', '--rose-2', '--rose-clair', '--degrade', '--degrade-bouton'].forEach(v => st.removeProperty(v));
+  let meta = '#5b2a4e';
+  if (t) {
+    st.setProperty('--prune', t[0]); st.setProperty('--rose', t[1]); st.setProperty('--rose-2', t[2]); st.setProperty('--rose-clair', t[3]);
+    st.setProperty('--degrade', 'linear-gradient(135deg, ' + t[4] + ' 0%, ' + t[5] + ' 55%, ' + t[1] + ' 100%)');
+    st.setProperty('--degrade-bouton', 'linear-gradient(135deg, ' + t[1] + ' 0%, ' + t[6] + ' 100%)');
+    meta = t[0];
+  }
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = meta;
+}
+
+/* Lien SMS (prérempli) vers un numéro, ou sans numéro si inconnu */
+function lienSms(tel, texte) {
+  const num = String(tel || '').replace(/[^\d+]/g, '');
+  return 'sms:' + num + '?&body=' + encodeURIComponent(texte);
+}
+const texteAvis = nom => 'Bonjour ' + nom + ', merci pour votre visite chez ' + nomSalon() + ' ! Si vous avez une minute, votre avis nous aiderait beaucoup : ' + P().avis;
+const texteRelance = nom => 'Bonjour ' + nom + ', cela fait un moment ! Au plaisir de vous revoir chez ' + nomSalon() + '. Répondez à ce message pour prendre rendez-vous 😊';
 
 function appliquerReglages() {
   ['fidelite', 'offres', 'options', 'paiement', 'achats', 'fiche', 'heure']
     .forEach(k => document.body.classList.toggle('sans-' + k, !mod(k)));
   document.querySelectorAll('[data-mot]').forEach(e => { const [f, m] = e.dataset.mot.split('|'); e.textContent = estClient() ? m : f; });
   $('titrePrestations').textContent = icone() + ' Prestations';
+  appliquerTheme();
+  const j = P().relance || 60;
+  const fAbs = document.querySelector('[data-f="absente"]');
+  fAbs.textContent = M('💤 Pas venue depuis ', '💤 Pas venu depuis ') + j + ' jours';
   $('recherche').placeholder = 'Tape le prénom…';
   if (!mod('achats') && vueActive === 'achats') vue('nouvelle');
 }
 
 const fideliteActive = () => mod('fidelite') && (!D.fidelite || D.fidelite.etat === 'active');
 const prochesOffre = c => fideliteActive() && c.depuis % D.passagesPourOffre === D.passagesPourOffre - 1;
-const absente = c => c.total > 0 && dateNum(c.derniere) && (Date.now() - dateNum(c.derniere)) > 60 * 864e5;
+const absente = c => c.total > 0 && dateNum(c.derniere) && (Date.now() - dateNum(c.derniere)) > (P().relance || 60) * 864e5;
 
 function pointsFidelite(c) {
   const n = c.depuis % D.passagesPourOffre, pts = el('div', 'points');
@@ -495,6 +556,10 @@ function majContact() {
   $('ficheAppel').href = 'tel:' + tel;
   const c = D.clientes.find(x => x.cle === ficheCle);
   $('ficheSms').href = 'sms:' + tel + '?&body=' + encodeURIComponent('Bonjour ' + (c ? c.nom : '') + ', ');
+  $('ficheRelance').classList.toggle('cache', !(c && absente(c)));
+  if (c) $('ficheRelance').href = lienSms(tel, texteRelance(c.nom));
+  $('ficheAvis').classList.toggle('cache', !P().avis);
+  if (c) $('ficheAvis').href = lienSms(tel, texteAvis(c.nom));
 }
 
 function sauverFiche() {
@@ -754,6 +819,7 @@ function afficherOffres() {
   };
   bloc('🎁 ' + RED() + ' à leur prochaine visite', D.clientes.filter(prochesOffre), c => c.nom);
   bloc('🎂 Anniversaire ce mois-ci', D.clientes.filter(anniversaireCeMois), c => c.nom + ' (' + c.anniversaire + ')');
+  bloc('💤 À relancer (plus de ' + (P().relance || 60) + ' jours)', D.clientes.filter(absente), c => c.nom + ' (' + c.derniere + ')');
 }
 
 /* ======================= ACHATS ======================= */
@@ -861,6 +927,33 @@ function afficherBilan() {
   tb.appendChild(tr);
   $('anCa').textContent = euros(tc); $('anAchats').textContent = euros(ta); $('anReste').textContent = euros(tc - ta);
   $('anReste').classList.toggle('negatif', tc - ta < 0);
+
+  const jauge = (zone, titre, valeur, cible, detail, alerteDes) => {
+    zone.innerHTML = '';
+    const p = cible ? Math.min(valeur / cible, 1) : 0;
+    zone.classList.toggle('alerte', !!alerteDes && valeur / cible >= alerteDes);
+    const l = el('div', 'ligne1'); l.appendChild(el('span', '', titre)); l.appendChild(el('span', '', Math.round(valeur / cible * 100) + ' %'));
+    zone.appendChild(l);
+    const f = el('div', 'fond'), pl = el('div', 'plein'); pl.style.width = (p * 100) + '%'; f.appendChild(pl); zone.appendChild(f);
+    zone.appendChild(el('div', 'ligne2', detail));
+  };
+  const moisCourant = new Date().getMonth();
+  const caMois = (D.mois[moisCourant] || { ca: 0 }).ca;
+  $('carteObjectif').classList.toggle('cache', !P().objectif);
+  if (P().objectif) jauge($('carteObjectif'), '🎯 Objectif de ' + MOIS[moisCourant].toLowerCase(), caMois, P().objectif,
+    euros(caMois) + ' sur ' + euros(P().objectif) + (caMois < P().objectif ? ' · encore ' + euros(P().objectif - caMois) : ' · objectif atteint 🎉'));
+  $('carteSeuil').classList.toggle('cache', !P().seuil);
+  if (P().seuil) jauge($('carteSeuil'), '📈 Plafond micro-entreprise ' + D.annee, tc, P().seuil,
+    euros(tc) + ' sur ' + euros(P().seuil) + (tc / P().seuil >= 0.8 ? ' · ⚠️ attention, le plafond approche' : ''), 0.8);
+  const cu = $('carteUrssaf'); cu.innerHTML = '';
+  cu.classList.toggle('cache', !P().urssaf);
+  if (P().urssaf) {
+    const taux = P().urssaf / 100;
+    const l = el('div', 'ligne1'); l.appendChild(el('span', '', '🏛️ Cotisations à mettre de côté')); l.appendChild(el('span', '', P().urssaf.toLocaleString('fr-FR') + ' %'));
+    cu.appendChild(l);
+    cu.appendChild(el('div', 'ligne2', 'Ce mois-ci : ' + euros(caMois * taux) + ' · depuis janvier : ' + euros(tc * taux)));
+    cu.appendChild(el('div', 'ligne2', 'Estimation sur le chiffre d\'affaires encaissé. Le montant exact est celui de ta déclaration URSSAF.'));
+  }
 
   barres($('paiements'), D.parPaiement, m => ICONES_PAIEMENT[m] || '💰', 'Aucun encaissement cette année.');
   barres($('categories'), D.parCategorie, iconeCat, 'Aucun achat enregistré cette année. Ajoute-les dans l\'onglet 🧾 Achats.');
