@@ -264,3 +264,4 @@ header .logo { height: 34px; width: 34px; object-fit: cover; border-radius: 10px
 .jauge .plein { height: 100%; border-radius: 8px; background: var(--degrade-bouton); transition: width .6s ease; }
 .jauge.alerte .plein { background: linear-gradient(135deg, #f59f00, #d64545); }
 .jauge .ligne2 { margin-top: 8px; }
+body.sans-achats .stats-annee { grid-template-columns: 1fr; }
