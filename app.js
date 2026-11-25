@@ -552,7 +552,9 @@ function ouvrirFiche(cle, rafraichissement) {
 
 function majContact() {
   const tel = $('ficheTel').value.replace(/[^\d+]/g, '');
-  $('ficheContact').classList.toggle('cache', tel.length < 6);
+  // Appeler / SMS seulement avec un numéro ; Avis et Relancer restent disponibles (SMS sans destinataire)
+  $('ficheAppel').classList.toggle('cache', tel.length < 6);
+  $('ficheSms').classList.toggle('cache', tel.length < 6);
   $('ficheAppel').href = 'tel:' + tel;
   const c = D.clientes.find(x => x.cle === ficheCle);
   $('ficheSms').href = 'sms:' + tel + '?&body=' + encodeURIComponent('Bonjour ' + (c ? c.nom : '') + ', ');
