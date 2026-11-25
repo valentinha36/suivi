@@ -7,102 +7,161 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Suivi">
 <link rel="manifest" href="manifest.json">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=9">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
-<header><div class="titre" id="titre">Suivi des prestations</div><div class="sous" id="sousTitre"></div></header>
+<header class="appbar">
+  <div class="appbar-texte">
+    <div class="titre" id="titre">Suivi des prestations</div>
+    <div class="sous" id="sousTitre"></div>
+  </div>
+</header>
 <div id="bandeau" class="bandeau cache"></div>
 <main>
   <div id="chargement" class="chargement">Chargement…</div>
 
   <!-- ============ CODE PIN ============ -->
-  <section id="v-pin" class="cache" style="text-align:center;padding-top:40px">
-    <div style="font-size:56px">🔒</div>
-    <h2 style="justify-content:center">Code d'accès</h2>
-    <p style="color:var(--gris)">Demandé une seule fois sur cet appareil.</p>
-    <input type="password" id="pin" inputmode="numeric" maxlength="12" style="text-align:center;font-size:30px;letter-spacing:8px;max-width:260px"
+  <section id="v-pin" class="cache ecran-pin">
+    <div class="pin-icone" aria-hidden="true">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2.5"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
+    </div>
+    <h1 class="titre-ecran" style="text-align:center">Code d'accès</h1>
+    <p class="discret" style="text-align:center">Demandé une seule fois sur cet appareil.</p>
+    <input type="password" id="pin" inputmode="numeric" maxlength="12" class="champ-pin" aria-label="Code d'accès"
            onkeydown="if(event.key==='Enter')validerPin()">
-    <p id="pinMsg" style="color:var(--rose);font-weight:700"></p>
-    <button class="gros" style="max-width:320px" onclick="validerPin()">Entrer</button>
+    <p id="pinMsg" class="pin-msg"></p>
+    <button class="gros" onclick="validerPin()">Entrer</button>
+  </section>
+
+  <!-- ============ ACCUEIL ============ -->
+  <section id="v-accueil" class="cache">
+    <div class="hero">
+      <div class="hero-label">Encaissé aujourd'hui</div>
+      <div class="hero-montant" id="jourCa">0 €</div>
+      <div class="hero-sous"><b id="jourNb">0</b> prestation(s)</div>
+      <button class="hero-bouton" onclick="ouvrirSaisie()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+        Nouvelle prestation
+      </button>
+    </div>
+    <div id="carteObjectif" class="carte jauge cache"></div>
+    <div class="raccourcis">
+      <button class="raccourci" onclick="vue('clientes')">
+        <span class="raccourci-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"></path><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.9.7 3.1 2.5 3.5 5.2"></path></svg></span>
+        <span data-mot="Clientes|Clients">Clientes</span>
+      </button>
+      <button class="raccourci m-achats" onclick="vue('achats')">
+        <span class="raccourci-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"></path><path d="M9 8h6M9 12h6"></path></svg></span>
+        Nouvel achat
+      </button>
+      <button class="raccourci" onclick="vue('bilan')">
+        <span class="raccourci-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 20V11M10 20V5M16 20v-7M21 20H3"></path></svg></span>
+        Bilan
+      </button>
+    </div>
+    <h2 class="titre-section">À surveiller</h2>
+    <div id="surveiller"></div>
+    <h2 class="titre-section">Prestations du jour</h2>
+    <div id="journee"></div>
   </section>
 
   <!-- ============ NOUVELLE PRESTATION ============ -->
   <section id="v-nouvelle" class="cache">
     <div id="formulaire">
-      <h2><span class="etape">1</span><span data-mot="Cliente|Client">Cliente</span></h2>
-      <div id="clienteChoisie" class="selection cache">
-        <span id="clienteNom"></span>
-        <button class="lien" onclick="changerCliente()">Changer</button>
-      </div>
-      <div id="clienteRecherche">
-        <input type="text" id="recherche" placeholder="Tape le prénom…" autocomplete="off" oninput="filtrerClientes()">
-        <div id="suggestions" class="liste"></div>
+      <h1 class="titre-ecran">Nouvelle prestation</h1>
+
+      <div class="bloc">
+        <h2 class="titre-bloc"><span class="etape">1</span><span data-mot="Cliente|Client">Cliente</span></h2>
+        <div id="clienteChoisie" class="selection cache">
+          <span id="clienteNom"></span>
+          <button class="lien" onclick="changerCliente()">Changer</button>
+        </div>
+        <div id="clienteRecherche">
+          <input type="text" id="recherche" placeholder="Tape le prénom…" autocomplete="off" oninput="filtrerClientes()" aria-label="Rechercher">
+          <div id="suggestions" class="liste"></div>
+        </div>
       </div>
 
-      <h2><span class="etape">2</span>Prestation</h2>
-      <div id="prestations" class="grille"></div>
-      <h3 class="sous-titre m-options">+ Options</h3>
-      <div id="options" class="grille options m-options"></div>
-      <div id="blocDeplacement" class="cache">
-        <h3 class="sous-titre">🚗 À domicile</h3>
-        <div id="choixDeplacement" class="grille options"></div>
+      <div class="bloc">
+        <h2 class="titre-bloc"><span class="etape">2</span>Prestation</h2>
+        <div id="prestations" class="grille"></div>
+        <h3 class="sous-titre m-options">Options</h3>
+        <div id="options" class="grille options m-options"></div>
+        <div id="blocDeplacement" class="cache">
+          <h3 class="sous-titre">À domicile</h3>
+          <div id="choixDeplacement" class="grille options"></div>
+        </div>
       </div>
 
-      <h2><span class="etape">3</span>Prix<span class="m-paiement">&nbsp;et paiement</span></h2>
-      <div class="total">
-        <input type="number" id="prix" inputmode="decimal" placeholder="0" oninput="prixModifie()">
-        <span style="font-size:22px">€</span>
-        <button class="lien cache" id="prixAuto" onclick="remettrePrixAuto()">Prix automatique</button>
-      </div>
-      <div id="fidelite" class="fidelite cache"></div>
-      <div id="blocOffre" class="m-offres">
-        <h3 class="sous-titre">🏷️ Offre (facultatif)</h3>
-        <div id="anniv" class="fidelite info cache"></div>
-        <div id="choixOffres" class="grille options"></div>
-      </div>
-      <div id="encaisser" class="encaisser"></div>
-      <h3 class="sous-titre m-paiement">💳 Payé comment ?</h3>
-      <div id="choixPaiement" class="paiements m-paiement"></div>
-
-      <h2><span class="etape">4</span>Quand ?</h2>
-      <div class="quand">
-        <input type="date" id="date" onchange="majResume()">
-        <input type="time" id="heure" class="m-heure">
+      <div class="bloc">
+        <h2 class="titre-bloc"><span class="etape">3</span>Prix<span class="m-paiement">&nbsp;et paiement</span></h2>
+        <div class="total">
+          <input type="number" id="prix" inputmode="decimal" placeholder="0" oninput="prixModifie()" aria-label="Prix">
+          <span class="euro-grand">€</span>
+          <button class="lien cache" id="prixAuto" onclick="remettrePrixAuto()">Prix automatique</button>
+        </div>
+        <div id="fidelite" class="fidelite cache"></div>
+        <div id="blocOffre" class="m-offres">
+          <h3 class="sous-titre">Offre (facultatif)</h3>
+          <div id="anniv" class="fidelite info cache"></div>
+          <div id="choixOffres" class="grille options"></div>
+        </div>
+        <h3 class="sous-titre m-paiement">Payé comment ?</h3>
+        <div id="choixPaiement" class="paiements m-paiement"></div>
       </div>
 
-      <button class="gros" id="btnEnregistrer" onclick="enregistrer()">✔ Enregistrer</button>
+      <div class="bloc">
+        <h2 class="titre-bloc"><span class="etape">4</span>Quand ?</h2>
+        <div class="quand">
+          <input type="date" id="date" onchange="majResume()" aria-label="Date">
+          <input type="time" id="heure" class="m-heure" aria-label="Heure">
+        </div>
+      </div>
+
+      <!-- Barre d'encaissement, toujours visible -->
+      <div class="barre-caisse">
+        <div class="barre-caisse-texte">
+          <span>À encaisser</span>
+          <b id="encaisser">0 €</b>
+        </div>
+        <button class="gros" id="btnEnregistrer" onclick="enregistrer()">Enregistrer</button>
+      </div>
     </div>
 
     <div id="succes" class="succes cache">
-      <div class="icone" id="succesIcone">✅</div>
-      <h2 id="succesTitre" style="justify-content:center"></h2>
-      <p id="succesDetail" style="font-size:17px"></p>
-      <div id="succesMontant" class="encaisser"></div>
-      <a class="gros secondaire bouton-lien cache" id="succesAvis" href="#">⭐ Demander un avis Google</a>
-      <button class="gros" onclick="nouvelleSaisie()">➕ Nouvelle prestation</button>
+      <div class="succes-rond" id="succesIcone">✓</div>
+      <h1 id="succesTitre" class="titre-ecran" style="text-align:center"></h1>
+      <p id="succesDetail" class="discret" style="text-align:center;font-size:16px"></p>
+      <div id="succesMontant" class="succes-montant"></div>
+      <a class="gros secondaire bouton-lien cache" id="succesAvis" href="#">Demander un avis Google</a>
+      <button class="gros" onclick="nouvelleSaisie()">Nouvelle prestation</button>
+      <button class="lien" style="display:block;margin:14px auto 0" onclick="vue('accueil')">Retour à l'accueil</button>
     </div>
   </section>
 
   <!-- ============ CLIENTES ============ -->
   <section id="v-clientes" class="cache">
-    <h2 data-mot="Clientes|Clients">Clientes</h2>
-    <input type="text" id="rechercheClientes" placeholder="Rechercher…" oninput="afficherClientes()">
+    <h1 class="titre-ecran"><span id="iconeClients" class="cache"></span><span data-mot="Clientes|Clients">Clientes</span></h1>
+    <div class="champ-recherche">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+      <input type="text" id="rechercheClientes" placeholder="Rechercher…" oninput="afficherClientes()" aria-label="Rechercher">
+    </div>
     <div class="filtres" id="filtres">
       <button class="puce on" data-f="toutes" data-mot="Toutes|Tous">Toutes</button>
-      <button class="puce m-fidelite" data-f="offre">🎁 Fidélité au prochain passage</button>
-      <button class="puce" data-f="anniv">🎂 Anniversaire ce mois</button>
-      <button class="puce" data-f="absente" data-mot="💤 Pas venue depuis 2 mois|💤 Pas venu depuis 2 mois">💤 Pas venue depuis 2 mois</button>
-      <button class="puce" data-f="regulieres">⭐ Fidèles (5 passages et +)</button>
+      <button class="puce m-fidelite" data-f="offre">Fidélité au prochain passage</button>
+      <button class="puce" data-f="anniv">Anniversaire ce mois</button>
+      <button class="puce" data-f="absente" data-mot="Pas venue depuis 2 mois|Pas venu depuis 2 mois">Pas venue depuis 2 mois</button>
+      <button class="puce" data-f="regulieres">Fidèles (5 passages et +)</button>
     </div>
     <div class="trier">
-      <label for="tri">Trier par :</label>
+      <label for="tri">Trier</label>
       <select id="tri" onchange="afficherClientes()">
         <option value="nom">Nom (A → Z)</option>
-        <option value="recente">Dernière visite (récente d'abord)</option>
+        <option value="recente">Dernière visite</option>
         <option value="passages">Nombre de passages</option>
         <option value="ca">Chiffre d'affaires</option>
         <option value="offre" class="m-fidelite">Plus proche de l'offre fidélité</option>
@@ -126,9 +185,9 @@
       <div class="stat">Passages<b id="fichePassages">0</b></div>
       <div class="stat">Total dépensé<b id="ficheCa">0 €</b></div>
     </div>
-    <button class="gros" onclick="prestationPourFiche()">➕ Nouvelle prestation pour <span id="ficheNomBouton"></span></button>
+    <button class="gros" onclick="prestationPourFiche()">Nouvelle prestation pour <span id="ficheNomBouton"></span></button>
 
-    <h2>📇 <span class="m-fiche">Coordonnées et notes</span><span class="m-sans-fiche">Prénom</span></h2>
+    <h2 class="titre-section"><span class="m-fiche">Coordonnées et notes</span><span class="m-sans-fiche">Prénom</span></h2>
     <div class="carte">
       <label class="etiquette" for="fichePrenom">Prénom (nom affiché)</label>
       <input type="text" id="fichePrenom" maxlength="60">
@@ -136,69 +195,123 @@
       <label class="etiquette" for="ficheTel">Téléphone</label>
       <input type="tel" id="ficheTel" placeholder="06 12 34 56 78" inputmode="tel">
       <div class="contact" id="ficheContact">
-        <a class="bouton-contact" id="ficheAppel" href="#">📞 Appeler</a>
-        <a class="bouton-contact" id="ficheSms" href="#">💬 SMS</a>
-        <a class="bouton-contact cache" id="ficheRelance" href="#">💤 Relancer</a>
-        <a class="bouton-contact cache" id="ficheAvis" href="#">⭐ Avis Google</a>
+        <a class="bouton-contact" id="ficheAppel" href="#">Appeler</a>
+        <a class="bouton-contact" id="ficheSms" href="#">SMS</a>
+        <a class="bouton-contact cache" id="ficheRelance" href="#">Relancer</a>
+        <a class="bouton-contact cache" id="ficheAvis" href="#">Avis Google</a>
       </div>
       <label class="etiquette" for="ficheNomFamille">Nom de famille</label>
       <input type="text" id="ficheNomFamille" placeholder="(facultatif)">
       <label class="etiquette" for="ficheAnniv">Anniversaire (jour/mois)</label>
       <input type="text" id="ficheAnniv" placeholder="ex. 09/04" inputmode="numeric" maxlength="10">
       <label class="etiquette" for="ficheNotes">Notes</label>
-      <textarea id="ficheNotes" rows="4" placeholder="Préférences, allergies, remarques…"></textarea>
+      <textarea id="ficheNotes" rows="4" placeholder="Préférences, remarques…"></textarea>
       </div>
-      <button class="gros secondaire" id="btnFiche" onclick="sauverFiche()">✔ Enregistrer la fiche</button>
+      <button class="gros secondaire" id="btnFiche" onclick="sauverFiche()">Enregistrer la fiche</button>
     </div>
 
-    <h2>🔗 Même personne qu'une autre fiche ?</h2>
+    <h2 class="titre-section">Historique</h2>
+    <div id="ficheHistorique"></div>
+
+    <h2 class="titre-section">Même personne qu'une autre fiche ?</h2>
     <div class="carte">
       <p class="discret" style="margin-top:0">Ex. « Marlene » et « Marlène Dupont ». Les passages de l'autre fiche seront regroupés ici, sous le nom <b id="ficheNomFusion"></b>.</p>
-      <select id="ficheFusion"></select>
-      <button class="gros secondaire" id="btnFusion" onclick="fusionnerFiche()">🔗 Regrouper avec cette fiche</button>
+      <select id="ficheFusion" aria-label="Autre fiche"></select>
+      <button class="gros secondaire" id="btnFusion" onclick="fusionnerFiche()">Regrouper avec cette fiche</button>
     </div>
-
-    <h2>🕘 Historique</h2>
-    <div id="ficheHistorique"></div>
   </section>
 
-  <!-- ============ TARIFS & OFFRES ============ -->
-  <section id="v-tarifs" class="cache">
-    <h2 id="titrePrestations">Prestations</h2>
-    <div id="tarifsPrestations"></div>
-    <button class="lien" onclick="ajouterLigneTarif(false)">➕ Ajouter une prestation</button>
-    <div class="m-options">
-    <h2>✨ Options</h2>
-    <div id="tarifsOptions"></div>
-    <button class="lien" onclick="ajouterLigneTarif(true)">➕ Ajouter une option</button>
+  <!-- ============ BILAN ============ -->
+  <section id="v-bilan" class="cache">
+    <h1 class="titre-ecran" id="titreBilanAnnee">Bilan</h1>
+    <div class="stats stats-annee">
+      <div class="stat vedette">Encaissé (TTC)<b id="anCa">0 €</b></div>
+      <div class="stat m-achats">Dépensé (TTC)<b id="anAchats">0 €</b></div>
     </div>
-    <button class="gros" id="btnTarifs" onclick="sauverTarifs()">✔ Enregistrer les tarifs</button>
+    <div class="stat m-achats stat-large">Il reste (encaissé − dépensé)<b id="anReste">0 €</b></div>
+    <div id="carteSeuil" class="carte jauge cache"></div>
+    <div id="carteUrssaf" class="carte cache"></div>
+    <h2 class="titre-section m-paiement">Encaissé par mode de paiement</h2>
+    <div id="paiements" class="carte m-paiement"></div>
+    <h2 class="titre-section m-achats">Dépenses par catégorie</h2>
+    <div id="categories" class="carte m-achats"></div>
+    <h2 class="titre-section" id="titreAnnee">Par mois</h2>
+    <div class="table-boite">
+      <table><thead><tr><th>Mois</th><th class="n">Encaissé</th><th class="n m-achats">Dépensé</th><th class="n m-achats">Reste</th></tr></thead><tbody id="tableMois"></tbody></table>
+    </div>
+    <h2 class="titre-section">Dernières saisies</h2>
+    <div id="recentes"></div>
+  </section>
 
-    <h2 style="margin-top:34px" class="m-offres-ou-fidelite">🏷️ Offres</h2>
+  <!-- ============ PLUS ============ -->
+  <section id="v-plus" class="cache">
+    <h1 class="titre-ecran">Plus</h1>
+    <div class="carte salon-carte" id="infoSalon"></div>
+    <div class="menu">
+      <button class="menu-ligne" onclick="vue('tarifs')">
+        <span class="menu-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"></path><circle cx="7.5" cy="7.5" r="1.5"></circle></svg></span>
+        <span class="menu-texte"><b>Tarifs</b><small>Prestations, options et prix</small></span>
+        <span class="chevron">›</span>
+      </button>
+      <button class="menu-ligne m-offres-ou-fidelite" onclick="vue('offres')">
+        <span class="menu-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="13" rx="2"></rect><path d="M12 8v13M3 12h18M12 8c-2-4-6-4-6-1.5S9 8 12 8zm0 0c2-4 6-4 6-1.5S15 8 12 8z"></path></svg></span>
+        <span class="menu-texte"><b>Offres et fidélité</b><small>Réductions, anniversaires, parrainage</small></span>
+        <span class="chevron">›</span>
+      </button>
+      <button class="menu-ligne m-achats" onclick="vue('achats')">
+        <span class="menu-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"></path><path d="M9 8h6M9 12h6"></path></svg></span>
+        <span class="menu-texte"><b>Achats et dépenses</b><small>Produits, matériel, charges</small></span>
+        <span class="chevron">›</span>
+      </button>
+      <button class="menu-ligne" onclick="verrouiller()">
+        <span class="menu-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2.5"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg></span>
+        <span class="menu-texte"><b>Verrouiller l'application</b><small>Le code sera redemandé sur cet appareil</small></span>
+        <span class="chevron">›</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ TARIFS ============ -->
+  <section id="v-tarifs" class="cache">
+    <button class="lien retour" onclick="vue('plus')">← Plus</button>
+    <h1 class="titre-ecran" id="titrePrestations">Prestations</h1>
+    <div class="carte"><div id="tarifsPrestations"></div>
+      <button class="lien" onclick="ajouterLigneTarif(false)">+ Ajouter une prestation</button></div>
+    <div class="m-options">
+      <h2 class="titre-section">Options</h2>
+      <div class="carte"><div id="tarifsOptions"></div>
+        <button class="lien" onclick="ajouterLigneTarif(true)">+ Ajouter une option</button></div>
+    </div>
+    <button class="gros" id="btnTarifs" onclick="sauverTarifs()">Enregistrer les tarifs</button>
+  </section>
+
+  <!-- ============ OFFRES ============ -->
+  <section id="v-offres" class="cache">
+    <button class="lien retour" onclick="vue('plus')">← Plus</button>
+    <h1 class="titre-ecran">Offres et fidélité</h1>
     <div id="carteFidelite" class="m-fidelite"></div>
     <div class="m-offres">
-    <p class="discret">Les autres offres se choisissent au moment de la saisie (étape 3). En vert : active · en blanc : en pause.</p>
-    <div id="listeOffres"></div>
-    <h3 class="sous-titre">➕ Créer une offre</h3>
-    <div class="carte">
-      <input type="text" id="offreNom" placeholder="Nom (ex. Parrainage, Fête des mères…)" maxlength="60">
-      <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
-        <input type="number" id="offreValeur" inputmode="decimal" placeholder="10" style="max-width:120px">
-        <div class="bascule">
-          <button id="typePct" class="puce on" onclick="choisirType('%')">%</button>
-          <button id="typeEur" class="puce" onclick="choisirType('€')">€</button>
+      <p class="discret">Les offres se choisissent au moment de la saisie (étape 3). En vert : active · en blanc : en pause.</p>
+      <div id="listeOffres"></div>
+      <h2 class="titre-section">Créer une offre</h2>
+      <div class="carte">
+        <input type="text" id="offreNom" placeholder="Nom (ex. Parrainage, Fête des mères…)" maxlength="60" aria-label="Nom de l'offre">
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+          <input type="number" id="offreValeur" inputmode="decimal" placeholder="10" style="max-width:120px" aria-label="Montant">
+          <div class="bascule">
+            <button id="typePct" class="puce on" onclick="choisirType('%')">%</button>
+            <button id="typeEur" class="puce" onclick="choisirType('€')">€</button>
+          </div>
         </div>
+        <button class="gros secondaire" onclick="creerOffre()">Créer l'offre</button>
       </div>
-      <button class="gros secondaire" onclick="creerOffre()">Créer l'offre</button>
     </div>
-    </div>
-    <h2>👀 À surveiller</h2>
-    <div id="surveiller"></div>
   </section>
 
   <!-- ============ ACHATS ============ -->
   <section id="v-achats" class="cache">
-    <h2>🧾 Nouvel achat</h2>
+    <button class="lien retour" onclick="vue('plus')">← Plus</button>
+    <h1 class="titre-ecran">Nouvel achat</h1>
     <p class="discret" style="margin-top:-4px">Montants TTC (ce que tu as payé, TVA comprise).</p>
     <div class="carte">
       <label class="etiquette" for="achatLibelle">C'est quoi ?</label>
@@ -213,48 +326,22 @@
       </div>
       <label class="etiquette" for="achatDate">Date</label>
       <input type="date" id="achatDate">
-      <div id="achatTotal" class="encaisser"></div>
-      <button class="gros" id="btnAchat" onclick="enregistrerAchat()">✔ Enregistrer l'achat</button>
+      <div id="achatTotal" class="encaisser-ligne"></div>
+      <button class="gros" id="btnAchat" onclick="enregistrerAchat()">Enregistrer l'achat</button>
     </div>
-    <h2>Achats de l'année</h2>
-    <div class="trier"><label for="achatFiltre">Voir :</label>
+    <h2 class="titre-section">Achats de l'année</h2>
+    <div class="trier"><label for="achatFiltre">Voir</label>
       <select id="achatFiltre" onchange="afficherAchats()"></select></div>
     <p id="achatsResume" class="discret"></p>
     <div id="listeAchats"></div>
-  </section>
-
-  <!-- ============ BILAN ============ -->
-  <section id="v-bilan" class="cache">
-    <h2>Aujourd'hui</h2>
-    <div class="stats">
-      <div class="stat">Prestations<b id="jourNb">0</b></div>
-      <div class="stat">Encaissé<b id="jourCa">0 €</b></div>
-    </div>
-    <div id="carteObjectif" class="carte jauge cache"></div>
-    <h2 id="titreBilanAnnee">Bilan de l'année</h2>
-    <div class="stats stats-annee">
-      <div class="stat vedette">Encaissé (TTC)<b id="anCa">0 €</b></div>
-      <div class="stat m-achats">Dépensé (TTC)<b id="anAchats">0 €</b></div>
-    </div>
-    <div class="stat vedette m-achats" style="margin-top:10px">Il reste (encaissé − dépensé)<b id="anReste">0 €</b></div>
-    <div id="carteSeuil" class="carte jauge cache"></div>
-    <div id="carteUrssaf" class="carte cache"></div>
-    <h2 class="m-paiement">💳 Encaissé par mode de paiement</h2>
-    <div id="paiements" class="carte m-paiement"></div>
-    <h2 class="m-achats">Dépenses par catégorie</h2>
-    <div id="categories" class="carte m-achats"></div>
-    <h2 id="titreAnnee">Par mois</h2>
-    <table><thead><tr><th>Mois</th><th class="n">Encaissé</th><th class="n m-achats">Dépensé</th><th class="n m-achats">Reste</th></tr></thead><tbody id="tableMois"></tbody></table>
-    <h2>Dernières saisies</h2>
-    <div id="recentes"></div>
   </section>
 </main>
 
 <!-- ============ MODIFIER UNE SAISIE ============ -->
 <div id="modale" class="modale cache" onclick="if(event.target===this)fermerModale()">
-  <div class="feuille">
+  <div class="feuille" role="dialog" aria-label="Modifier la saisie">
     <div class="feuille-poignee"></div>
-    <h2 style="margin-top:4px">✏️ Modifier la saisie</h2>
+    <h2 class="titre-ecran" style="margin-top:4px;font-size:22px">Modifier la saisie</h2>
     <div class="quand">
       <div><label class="etiquette" for="mDate">Date</label><input type="date" id="mDate"></div>
       <div class="m-heure"><label class="etiquette" for="mHeure">Heure</label><input type="time" id="mHeure"></div>
@@ -272,23 +359,37 @@
       <select id="mOffre"></select>
     </div>
     <div id="mInfo" class="fidelite info cache"></div>
-    <button class="gros" id="btnModifier" onclick="validerModification()">✔ Enregistrer les changements</button>
+    <button class="gros" id="btnModifier" onclick="validerModification()">Enregistrer les changements</button>
     <div class="actions" style="justify-content:space-between;margin-top:14px">
       <button class="lien" onclick="fermerModale()">Annuler</button>
-      <button class="lien danger" onclick="supprimerSaisie()">🗑 Supprimer cette saisie</button>
+      <button class="lien danger" onclick="supprimerSaisie()">Supprimer cette saisie</button>
     </div>
   </div>
 </div>
 <datalist id="listeNoms"></datalist>
 
-<nav>
-  <button id="t-nouvelle" onclick="vue('nouvelle')"><span>➕</span>Nouvelle</button>
-  <button id="t-clientes" onclick="vue('clientes')"><span id="iconeClients">👥</span><b data-mot="Clientes|Clients">Clientes</b></button>
-  <button id="t-tarifs" onclick="vue('tarifs')"><span>🏷️</span>Tarifs</button>
-  <button id="t-achats" class="m-achats" onclick="vue('achats')"><span>🧾</span>Achats</button>
-  <button id="t-bilan" onclick="vue('bilan')"><span>📊</span>Bilan</button>
+<nav class="navbar" aria-label="Navigation">
+  <button id="t-accueil" onclick="vue('accueil')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>
+    <span>Accueil</span>
+  </button>
+  <button id="t-clientes" onclick="vue('clientes')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"></path><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.9.7 3.1 2.5 3.5 5.2"></path></svg>
+    <span data-mot="Clientes|Clients">Clientes</span>
+  </button>
+  <button id="t-nouvelle" class="fab" onclick="ouvrirSaisie()" aria-label="Nouvelle prestation">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+  </button>
+  <button id="t-bilan" onclick="vue('bilan')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 20V11M10 20V5M16 20v-7M21 20H3"></path></svg>
+    <span>Bilan</span>
+  </button>
+  <button id="t-plus" onclick="vue('plus')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"></rect></svg>
+    <span>Plus</span>
+  </button>
 </nav>
-<div id="msg" class="msg"></div>
-<script src="app.js?v=13"></script>
+<div id="msg" class="msg" role="status"></div>
+<script src="app.js?v=14"></script>
 </body>
 </html>

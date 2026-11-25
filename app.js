@@ -201,7 +201,7 @@ function init() {
   nouvelleSaisie();
   initAchats();
   rafraichir();
-  vue('nouvelle');
+  vue('accueil');
 }
 
 /** Met à jour toutes les vues avec de nouvelles données. */
@@ -215,15 +215,47 @@ function majTout(d) {
   if (vueActive === 'fiche' && ficheCle) ouvrirFiche(ficheCle, true);
 }
 function rafraichir() {
+  if (vueActive === 'accueil') afficherAccueil();
   afficherClientes(); afficherBilan(); afficherTarifs(); afficherOffres(); afficherAchats(); remplirNoms();
 }
 
+/* Écrans et onglet du bas correspondant (les sous-écrans allument leur onglet parent) */
+const ONGLET_DE = { accueil: 'accueil', nouvelle: 'nouvelle', clientes: 'clientes', fiche: 'clientes', bilan: 'bilan', plus: 'plus', tarifs: 'plus', offres: 'plus', achats: 'plus' };
 function vue(v) {
   vueActive = v;
-  ['nouvelle', 'clientes', 'fiche', 'tarifs', 'achats', 'bilan'].forEach(x => $('v-' + x).classList.toggle('cache', x !== v));
-  ['nouvelle', 'clientes', 'tarifs', 'achats', 'bilan'].forEach(x => $('t-' + x).classList.toggle('actif', x === v || (v === 'fiche' && x === 'clientes')));
+  Object.keys(ONGLET_DE).forEach(x => $('v-' + x).classList.toggle('cache', x !== v));
+  ['accueil', 'clientes', 'nouvelle', 'bilan', 'plus'].forEach(x => $('t-' + x).classList.toggle('actif', ONGLET_DE[v] === x));
+  document.body.classList.toggle('en-saisie', v === 'nouvelle' && !$('formulaire').classList.contains('cache'));
   if (v === 'tarifs') afficherTarifs();
+  if (v === 'accueil') afficherAccueil();
   window.scrollTo(0, 0);
+}
+
+/** Bouton + du bas : ouvre une saisie (neuve si la précédente vient d'être enregistrée). */
+function ouvrirSaisie() {
+  if (!$('succes').classList.contains('cache')) nouvelleSaisie();
+  vue('nouvelle');
+}
+
+/** Accueil : prestations du jour + carte du salon (écran Plus). */
+function afficherAccueil() {
+  if (!D) return;
+  const z = $('journee'); z.innerHTML = '';
+  const jour = D.journal.filter(r => r.iso === D.aujourdHuiIso).reverse();
+  if (!jour.length) z.appendChild(el('p', 'discret', 'Aucune prestation enregistrée aujourd\'hui.'));
+  jour.forEach(r => z.appendChild(carteSaisie(r, true)));
+  const info = $('infoSalon'); info.innerHTML = '';
+  const l1 = el('div', 'ligne1'); l1.appendChild(el('span', '', icone() + ' ' + ((D.reglages && D.reglages.nomSalon) || 'Mon salon')));
+  info.appendChild(l1);
+  info.appendChild(el('div', 'ligne2', [D.reglages && D.reglages.metier, D.clientes.length + ' ' + M('cliente', 'client') + (D.clientes.length > 1 ? 's' : ''),
+    D.journal.length + ' prestation' + (D.journal.length > 1 ? 's' : '') + ' enregistrée' + (D.journal.length > 1 ? 's' : '')].filter(Boolean).join(' · ')));
+  info.appendChild(el('div', 'ligne2', 'Tarifs, modules et couleurs se règlent dans l\'onglet Réglages du Google Sheet.'));
+}
+
+/** Plus → Verrouiller : oublie le code sur cet appareil. */
+function verrouiller() {
+  if (!confirm('Verrouiller l\'application sur cet appareil ? Le code sera redemandé.')) return;
+  lsDel(CLE_PIN); location.reload();
 }
 
 /* ======================= NOUVELLE PRESTATION ======================= */
@@ -243,6 +275,7 @@ function nouvelleSaisie() {
   $('prixAuto').classList.add('cache');
   $('clienteChoisie').classList.add('cache'); $('clienteRecherche').classList.remove('cache');
   $('formulaire').classList.remove('cache'); $('succes').classList.add('cache');
+  document.body.classList.toggle('en-saisie', vueActive === 'nouvelle');
   $('btnEnregistrer').disabled = false; $('btnEnregistrer').textContent = '✔ Enregistrer';
   document.querySelectorAll('#prestations .presta, #options .presta, #choixDeplacement .presta').forEach(b => b.classList.remove('on'));
   document.querySelectorAll('#choixPaiement .puce').forEach(b => b.classList.remove('on'));
@@ -390,7 +423,7 @@ function majResume() {
   let aPayer = prix;
   if (offre && prix) aPayer = Math.round(((!prixManuel && choisis.length > 1) ? prix - Math.max(...choisis.map(x => x.prix)) * TAUX() : prix * (1 - TAUX())) * 100) / 100;
   else if (offreChoisie && prix) aPayer = Math.max(Math.round((offreChoisie.type === '%' ? prix * (1 - offreChoisie.valeur / 100) : prix - offreChoisie.valeur) * 100) / 100, 0);
-  $('encaisser').textContent = prix || choisis.length ? 'À encaisser : ' + euros(aPayer) + (offreChoisie && !offre ? '  (' + offreChoisie.nom + ')' : '') : '';
+  $('encaisser').textContent = euros(prix || choisis.length ? aPayer : 0) + (offreChoisie && !offre && prix ? ' · ' + offreChoisie.nom : '');
   return aPayer;
 }
 
@@ -415,7 +448,7 @@ function enregistrer() {
     : (GENERIQUES.includes(cliente.cle) ? '' : ((cliente.total || 0) + 1) + 'e passage au total.');
   mettreEnAttente(item);
   majLocaleApresSaisie(cliente, p.date);
-  afficherSucces(horsLigne ? '📴' : '✅', horsLigne ? 'Gardé sur le téléphone' : 'Enregistré pour ' + p.client,
+  afficherSucces(horsLigne ? '!' : '✓', horsLigne ? 'Gardé sur le téléphone' : 'Enregistré pour ' + p.client,
     horsLigne ? 'Pas d\'internet : la saisie sera envoyée automatiquement dès le retour du réseau.' : detail, aPayer);
   envoyerAttente();
 }
@@ -432,6 +465,7 @@ function majLocaleApresSaisie(c, iso) {
 }
 
 function afficherSucces(icone, titre, detail, montant) {
+  document.body.classList.remove('en-saisie');
   const bA = $('succesAvis');
   const c = cliente && D.clientes.find(x => x.cle === cliente.cle);
   bA.classList.toggle('cache', !P().avis || !cliente);
@@ -496,9 +530,9 @@ function appliquerReglages() {
   appliquerTheme();
   const j = P().relance || 60;
   const fAbs = document.querySelector('[data-f="absente"]');
-  fAbs.textContent = M('💤 Pas venue depuis ', '💤 Pas venu depuis ') + j + ' jours';
+  fAbs.textContent = M('Pas venue depuis ', 'Pas venu depuis ') + j + ' jours';
   $('recherche').placeholder = 'Tape le prénom…';
-  if (!mod('achats') && vueActive === 'achats') vue('nouvelle');
+  if (!mod('achats') && vueActive === 'achats') vue('plus');
 }
 
 const fideliteActive = () => mod('fidelite') && (!D.fidelite || D.fidelite.etat === 'active');
