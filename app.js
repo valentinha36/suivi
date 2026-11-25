@@ -25,7 +25,7 @@ const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 
 const GENERIQUES = ['cliente', 'client', 'accompagnant', 'accompagnante'];
 const ICONES_PAIEMENT = { 'Espèces': '💶', 'Carte': '💳', 'Wero': '📲', 'Chèque': '🧾', 'Virement': '🏦', 'Autre': '📱', 'Non renseigné': '❔' };
 const ICONES_CAT = {
-  'Produits & consommables': '💅', 'Matériel & équipement': '🔌', 'Hygiène & désinfection': '🧴', 'Formation': '🎓',
+  'Produits & consommables': '🛍️', 'Matériel & équipement': '🔌', 'Hygiène & désinfection': '🧴', 'Formation': '🎓',
   'Publicité & communication': '📣', 'Local & loyer': '🏠', 'Déplacements': '🚗', 'Assurance & banque': '🏦',
   'URSSAF & cotisations': '🏛️', 'Autre': '📦',
 };
@@ -159,14 +159,23 @@ function charger() {
   });
 }
 
+function afficherEnTete() {
+  if (!D || !D.reglages || !D.reglages.nomSalon) return;
+  const t = $('titre'); t.textContent = '';
+  if (P().logo) { const img = el('img', 'logo'); img.src = P().logo; img.alt = ''; img.onerror = () => img.remove(); t.appendChild(img); }
+  t.appendChild(document.createTextNode((P().logo ? '' : icone() + ' ') + D.reglages.nomSalon));
+  document.title = D.reglages.nomSalon;
+}
+function enTeteDepuisCache() {
+  try {
+    const c = JSON.parse(localStorage.getItem('donnees_suivi') || 'null');
+    if (c && c.reglages) { D = c; afficherEnTete(); appliquerTheme(); $('iconeClients').textContent = iconeClients(); D = null; }
+  } catch (e) { D = null; }
+}
+
 let initFait = false;
 function init() {
-  if (D.reglages && D.reglages.nomSalon) {
-    const t = $('titre'); t.textContent = '';
-    if (P().logo) { const img = el('img', 'logo'); img.src = P().logo; img.alt = ''; img.onerror = () => img.remove(); t.appendChild(img); }
-    t.appendChild(document.createTextNode((P().logo ? '' : icone() + ' ') + D.reglages.nomSalon));
-    document.title = D.reglages.nomSalon;
-  }
+  afficherEnTete();
   appliquerReglages();
   $('sousTitre').textContent = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   document.querySelectorAll('.debutOffre').forEach(s => s.textContent = D.debutOffre);
@@ -423,9 +432,11 @@ const RED = () => '−' + ((D && D.reductionFidelite) || 50).toLocaleString('fr-
 const TAUX = () => ((D && D.reductionFidelite) || 50) / 100;
 /* ---------- Modules, métier et vocabulaire (onglet Réglages du Google Sheet) ---------- */
 const mod = k => !(D && D.reglages && D.reglages.modules && D.reglages.modules[k] === false);
-const estClient = () => !!(D && D.reglages && D.reglages.mot === 'Client');
+// « Client » et « Mixte » utilisent le masculin (forme neutre en français), « Cliente » le féminin
+const estClient = () => !!(D && D.reglages && (D.reglages.mot === 'Client' || D.reglages.mot === 'Mixte'));
+const iconeClients = () => { const m = D && D.reglages && D.reglages.mot; return m === 'Cliente' ? '👩' : m === 'Client' ? '👨' : '👥'; };
 const M = (fem, masc) => estClient() ? masc : fem; // ex. M('cliente', 'client')
-const icone = () => (D && D.reglages && D.reglages.icone) || '💅';
+const icone = () => (D && D.reglages && D.reglages.icone) || '✨';
 const P = () => (D && D.reglages && D.reglages.plus) || {};
 const nomSalon = () => (D && D.reglages && D.reglages.nomSalon) || 'notre salon';
 
@@ -463,6 +474,8 @@ function appliquerReglages() {
     .forEach(k => document.body.classList.toggle('sans-' + k, !mod(k)));
   document.querySelectorAll('[data-mot]').forEach(e => { const [f, m] = e.dataset.mot.split('|'); e.textContent = estClient() ? m : f; });
   $('titrePrestations').textContent = icone() + ' Prestations';
+  $('iconeClients').textContent = iconeClients();
+  $('ficheNotes').placeholder = (D.reglages && D.reglages.notes) || 'Préférences, allergies, remarques…';
   appliquerTheme();
   const j = P().relance || 60;
   const fAbs = document.querySelector('[data-f="absente"]');
@@ -966,4 +979,5 @@ function afficherBilan() {
 
 /* ---------- Démarrage ---------- */
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { /* facultatif */ });
+enTeteDepuisCache(); // en-tête du salon dès l'ouverture (dernière visite)
 charger();

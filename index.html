@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
-<header><div class="titre" id="titre">💅 Suivi des prestations</div><div class="sous" id="sousTitre"></div></header>
+<header><div class="titre" id="titre">Suivi des prestations</div><div class="sous" id="sousTitre"></div></header>
 <div id="bandeau" class="bandeau cache"></div>
 <main>
   <div id="chargement" class="chargement">Chargement…</div>
@@ -164,7 +164,7 @@
 
   <!-- ============ TARIFS & OFFRES ============ -->
   <section id="v-tarifs" class="cache">
-    <h2 id="titrePrestations">💅 Prestations</h2>
+    <h2 id="titrePrestations">Prestations</h2>
     <div id="tarifsPrestations"></div>
     <button class="lien" onclick="ajouterLigneTarif(false)">➕ Ajouter une prestation</button>
     <div class="m-options">
@@ -283,12 +283,12 @@
 
 <nav>
   <button id="t-nouvelle" onclick="vue('nouvelle')"><span>➕</span>Nouvelle</button>
-  <button id="t-clientes" onclick="vue('clientes')"><span>👩</span><b data-mot="Clientes|Clients">Clientes</b></button>
+  <button id="t-clientes" onclick="vue('clientes')"><span id="iconeClients">👥</span><b data-mot="Clientes|Clients">Clientes</b></button>
   <button id="t-tarifs" onclick="vue('tarifs')"><span>🏷️</span>Tarifs</button>
   <button id="t-achats" class="m-achats" onclick="vue('achats')"><span>🧾</span>Achats</button>
   <button id="t-bilan" onclick="vue('bilan')"><span>📊</span>Bilan</button>
 </nav>
 <div id="msg" class="msg"></div>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
