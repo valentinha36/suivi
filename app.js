@@ -113,7 +113,7 @@ async function envoyerAttente() {
   } finally {
     envoiEnCours = false;
   }
-  if (envoyees) { horsLigne = false; majTout(dernieres); message('📶 ' + envoyees + ' saisie' + (envoyees > 1 ? 's envoyées' : ' envoyée') + ' au Google Sheet.'); }
+  if (envoyees) { horsLigne = false; majTout(dernieres); message('✅ ' + (envoyees > 1 ? envoyees + ' saisies enregistrées' : 'Saisie enregistrée') + ' dans le Google Sheet.', 2500); }
   majBandeau();
 }
 
@@ -121,8 +121,9 @@ function majBandeau() {
   const n = fileAttente().length, b = $('bandeau');
   if (!n && !horsLigne) { b.classList.add('cache'); return; }
   b.classList.remove('cache');
-  b.textContent = (horsLigne ? '📴 Pas d\'internet' : '⏳ Envoi en cours') +
-    (n ? ' · ' + n + ' saisie' + (n > 1 ? 's' : '') + ' en attente, envoi automatique au retour du réseau' : ' · données du dernier chargement');
+  b.textContent = horsLigne
+    ? '📴 Pas d\'internet' + (n ? ' · ' + n + ' saisie' + (n > 1 ? 's' : '') + ' en attente, envoi automatique au retour du réseau' : ' · données du dernier chargement')
+    : '⏳ Enregistrement dans le Google Sheet…' + (n > 1 ? ' (' + n + ')' : '');
 }
 window.addEventListener('online', () => { horsLigne = false; envoyerAttente(); });
 window.addEventListener('offline', () => { horsLigne = true; majBandeau(); });
@@ -406,20 +407,28 @@ function enregistrer() {
     paiement: paiementChoisi,
   };
   const item = { action: 'ajouter', uid: uid(), extra: { p }, resume: cliente.nom + ' ' + euros(aPayer) };
-  $('btnEnregistrer').disabled = true; $('btnEnregistrer').textContent = 'Enregistrement…';
-  api('ajouter', { uid: item.uid, p }).then(j => {
-    const r = j.resultat;
-    majTout(r.data);
-    afficherSucces('✅', 'Enregistré pour ' + p.client,
-      r.libelle === D.libelleFidelite ? '🎁 Passage fidélité : ' + RED() + ' appliqué !'
-        : r.libelle ? '🏷️ Offre appliquée : ' + r.libelle : (r.passage ? r.passage + 'e passage au total.' : ''),
-      typeof r.aEncaisser === 'number' ? r.aEncaisser : aPayer);
-  }).catch(e => {
-    if (e.horsLigne) {
-      horsLigne = true; mettreEnAttente(item);
-      afficherSucces('📴', 'Gardé sur le téléphone', 'Pas d\'internet : la saisie de ' + p.client + ' sera envoyée automatiquement dès le retour du réseau.', aPayer);
-    } else { $('btnEnregistrer').disabled = false; $('btnEnregistrer').textContent = '✔ Enregistrer'; erreur(e); }
-  });
+  // Confirmation immédiate : la saisie part dans la file d'envoi (gardée sur le téléphone jusqu'à l'envoi),
+  // le Google Sheet est mis à jour en arrière-plan, sans doublon possible (identifiant unique).
+  const fidelite = offreProchaine();
+  const detail = fidelite ? '🎁 Passage fidélité : ' + RED() + ' appliqué !'
+    : p.offre ? '🏷️ Offre appliquée : ' + p.offre.nom + ' ' + texteOffre(p.offre)
+    : (GENERIQUES.includes(cliente.cle) ? '' : ((cliente.total || 0) + 1) + 'e passage au total.');
+  mettreEnAttente(item);
+  majLocaleApresSaisie(cliente, p.date);
+  afficherSucces(horsLigne ? '📴' : '✅', horsLigne ? 'Gardé sur le téléphone' : 'Enregistré pour ' + p.client,
+    horsLigne ? 'Pas d\'internet : la saisie sera envoyée automatiquement dès le retour du réseau.' : detail, aPayer);
+  envoyerAttente();
+}
+
+/** Met à jour tout de suite les compteurs du client sur le téléphone (avant la réponse du Google Sheet). */
+function majLocaleApresSaisie(c, iso) {
+  if (GENERIQUES.includes(c.cle)) return;
+  const compte = iso >= D.debutOffreIso;
+  const fr = iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);
+  let x = D.clientes.find(y => y.cle === c.cle);
+  if (!x) { x = { cle: c.cle, nom: c.nom, total: 0, depuis: 0, ca: 0, derniere: '', anniversaire: '', nomFamille: '', tel: '', notes: '' }; D.clientes.push(x); }
+  x.total++; if (compte) x.depuis++;
+  if (!x.derniere || dateNum(fr) >= dateNum(x.derniere)) x.derniere = fr;
 }
 
 function afficherSucces(icone, titre, detail, montant) {
