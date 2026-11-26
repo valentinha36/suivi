@@ -1633,15 +1633,15 @@ function afficherReglagesEcran() {
   champ(b4, 'regAvis', 'Lien pour laisser un avis Google (facultatif)', p.avis, { placeholder: 'https://g.page/r/…', inputMode: 'url' },
     'Google Maps → ta fiche → « Demander des avis » → copier le lien. Ajoute le bouton « Avis Google ».');
   champ(b4, 'regRelance', 'Relancer après combien de jours sans visite', p.relance || 60, { type: 'number', inputMode: 'numeric', min: 1 });
-  champ(b4, 'regDeplacement', 'Frais de déplacement à domicile (€, facultatif)', p.deplacement, { type: 'number', inputMode: 'decimal', min: 0 },
+  champ(b4, 'regDeplacement', 'Frais de déplacement à domicile (€, facultatif)', p.deplacement, { inputMode: 'decimal' },
     'Ajoute un bouton « Déplacement » à la saisie. Vide = pas de bouton.');
 
   // Chiffres
   const b5 = bloc('Mes chiffres');
-  champ(b5, 'regObjectif', 'Objectif de chiffre d\'affaires par mois (€, facultatif)', p.objectif, { type: 'number', inputMode: 'decimal', min: 0 });
-  champ(b5, 'regSeuil', 'Plafond micro-entreprise (€ par an, facultatif)', p.seuil, { type: 'number', inputMode: 'decimal', min: 0 },
+  champ(b5, 'regObjectif', 'Objectif de chiffre d\'affaires par mois (€, facultatif)', p.objectif, { inputMode: 'decimal' });
+  champ(b5, 'regSeuil', 'Plafond micro-entreprise (€ par an, facultatif)', p.seuil, { inputMode: 'decimal' },
     'Alerte quand tu approches du plafond. Vérifie le montant chaque année sur autoentrepreneur.urssaf.fr.');
-  champ(b5, 'regUrssaf', 'Taux de cotisations URSSAF (%, facultatif)', p.urssaf, { type: 'number', inputMode: 'decimal', min: 0, max: 100 },
+  champ(b5, 'regUrssaf', 'Taux de cotisations URSSAF (%, facultatif)', p.urssaf, { inputMode: 'decimal', placeholder: 'ex. 21,2' },
     'Pour estimer ce qu\'il faut mettre de côté. Ton taux est dans ton espace URSSAF.');
 
   // Code
