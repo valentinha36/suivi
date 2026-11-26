@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 <header class="appbar">
@@ -22,6 +22,9 @@
     <div class="titre" id="titre">Suivi des prestations</div>
     <div class="sous" id="sousTitre"></div>
   </div>
+  <button class="appbar-bouton" onclick="vue('plus')" aria-label="Plus : réglages et outils">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"></rect></svg>
+  </button>
 </header>
 <div id="bandeau" class="bandeau cache"></div>
 <main>
@@ -66,10 +69,30 @@
         Bilan
       </button>
     </div>
+    <h2 class="titre-section">Rendez-vous du jour</h2>
+    <div id="rdvJour"></div>
+    <div id="rappelsAccueil"></div>
     <h2 class="titre-section">À surveiller</h2>
     <div id="surveiller"></div>
     <h2 class="titre-section">Prestations du jour</h2>
     <div id="journee"></div>
+  </section>
+
+  <!-- ============ AGENDA ============ -->
+  <section id="v-agenda" class="cache">
+    <div class="agenda-tete">
+      <h1 class="titre-ecran">Agenda</h1>
+      <button class="lien" onclick="allerAujourdhui()">Aujourd'hui</button>
+    </div>
+    <div class="semaine">
+      <button class="fleche" onclick="changerSemaine(-1)" aria-label="Semaine précédente">‹</button>
+      <div id="jours" class="jours"></div>
+      <button class="fleche" onclick="changerSemaine(1)" aria-label="Semaine suivante">›</button>
+    </div>
+    <h2 class="titre-section" id="titreJour"></h2>
+    <div id="listeRdv"></div>
+    <button class="gros" onclick="ouvrirRdv()">+ Nouveau rendez-vous</button>
+    <div id="rappelsAgenda" style="margin-top:18px"></div>
   </section>
 
   <!-- ============ NOUVELLE PRESTATION ============ -->
@@ -328,6 +351,11 @@
     <h1 class="titre-ecran">Plus</h1>
     <div class="carte salon-carte" id="infoSalon"></div>
     <div class="menu">
+      <button class="menu-ligne" onclick="vue('bilan')">
+        <span class="menu-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 20V11M10 20V5M16 20v-7M21 20H3"></path></svg></span>
+        <span class="menu-texte"><b>Bilan</b><small>Chiffre d'affaires, graphique, historique</small></span>
+        <span class="chevron">›</span>
+      </button>
       <button class="menu-ligne" onclick="vue('tarifs')">
         <span class="menu-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"></path><circle cx="7.5" cy="7.5" r="1.5"></circle></svg></span>
         <span class="menu-texte"><b>Tarifs</b><small>Prestations, options et prix</small></span>
@@ -456,6 +484,31 @@
     </div>
   </div>
 </div>
+<!-- ============ RENDEZ-VOUS ============ -->
+<div id="modaleRdv" class="modale cache" onclick="if(event.target===this)fermerRdv()">
+  <div class="feuille" role="dialog" aria-label="Rendez-vous">
+    <div class="feuille-poignee"></div>
+    <h2 class="titre-ecran" style="margin-top:4px;font-size:22px" id="rdvTitre">Nouveau rendez-vous</h2>
+    <label class="etiquette" for="rdvClient" data-mot="Cliente|Client">Cliente</label>
+    <input type="text" id="rdvClient" list="listeNoms" autocomplete="off" maxlength="80" placeholder="Prénom (ou nouveau nom)">
+    <div class="quand">
+      <div><label class="etiquette" for="rdvDate">Date</label><input type="date" id="rdvDate"></div>
+      <div><label class="etiquette" for="rdvHeure">Heure</label><input type="time" id="rdvHeure" step="300"></div>
+    </div>
+    <label class="etiquette" for="rdvDuree">Durée</label>
+    <select id="rdvDuree"></select>
+    <label class="etiquette">Prestation</label>
+    <div id="rdvPrestas" class="grille options"></div>
+    <input type="text" id="rdvPrestation" placeholder="ou écris-la ici" maxlength="200" style="margin-top:8px" aria-label="Prestation">
+    <label class="etiquette" for="rdvNote">Note (facultatif)</label>
+    <input type="text" id="rdvNote" maxlength="300" placeholder="ex. acompte versé, premier rendez-vous…">
+    <button class="gros" onclick="sauverRdv()">Enregistrer le rendez-vous</button>
+    <div class="actions" style="justify-content:space-between;margin-top:14px">
+      <button class="lien" onclick="fermerRdv()">Annuler</button>
+      <button class="lien danger cache" id="rdvSupprimer" onclick="supprimerRdv()">Supprimer le rendez-vous</button>
+    </div>
+  </div>
+</div>
 <datalist id="listeNoms"></datalist>
 
 <nav class="navbar" aria-label="Navigation">
@@ -463,23 +516,23 @@
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>
     <span>Accueil</span>
   </button>
-  <button id="t-clientes" onclick="vue('clientes')">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"></path><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.9.7 3.1 2.5 3.5 5.2"></path></svg>
-    <span data-mot="Clientes|Clients">Clientes</span>
+  <button id="t-agenda" onclick="vue('agenda')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path></svg>
+    <span>Agenda</span>
   </button>
   <button id="t-nouvelle" class="fab" onclick="ouvrirSaisie()" aria-label="Nouvelle prestation">
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+  </button>
+  <button id="t-clientes" onclick="vue('clientes')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"></path><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.9.7 3.1 2.5 3.5 5.2"></path></svg>
+    <span data-mot="Clientes|Clients">Clientes</span>
   </button>
   <button id="t-bilan" onclick="vue('bilan')">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 20V11M10 20V5M16 20v-7M21 20H3"></path></svg>
     <span>Bilan</span>
   </button>
-  <button id="t-plus" onclick="vue('plus')">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"></rect></svg>
-    <span>Plus</span>
-  </button>
 </nav>
 <div id="msg" class="msg" role="status"></div>
-<script src="app.js?v=17"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>

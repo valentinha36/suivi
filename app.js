@@ -102,8 +102,8 @@ async function envoyerAttente() {
       const item = l[0];
       try {
         const j = await api(item.action, Object.assign({ uid: item.uid }, item.extra));
-        dernieres = item.action === 'ajouter' ? (j.resultat.data || j.resultat) : (j.data.data || j.data);
-        envoyees++;
+        if (item.action.indexOf('rdv') === 0) { horsLigne = false; if (!fileAttente().slice(1).some(x => x.action.indexOf('rdv') === 0)) majAgenda(j.data.agenda); }
+        else { dernieres = item.action === 'ajouter' ? (j.resultat.data || j.resultat) : (j.data.data || j.data); envoyees++; }
       } catch (e) {
         if (e.horsLigne) { horsLigne = true; break; }
         erreur('Saisie en attente refusée (' + (item.resume || '') + ') : ' + e.message);
@@ -224,18 +224,20 @@ function rafraichir() {
   afficherClientes(); afficherBilan(); afficherTarifs(); afficherOffres(); afficherAchats(); remplirNoms();
   if (vueActive === 'recettes') afficherRecettes();
   if (vueActive === 'stats') afficherStats();
+  if (vueActive === 'agenda') afficherAgenda();
 }
 
 /* Écrans et onglet du bas correspondant (les sous-écrans allument leur onglet parent) */
-const ONGLET_DE = { accueil: 'accueil', nouvelle: 'nouvelle', clientes: 'clientes', fiche: 'clientes', bilan: 'bilan', plus: 'plus', tarifs: 'plus', offres: 'plus', achats: 'plus', recettes: 'bilan', stats: 'bilan' };
+const ONGLET_DE = { accueil: 'accueil', agenda: 'agenda', nouvelle: 'nouvelle', clientes: 'clientes', fiche: 'clientes', bilan: 'bilan', plus: '', tarifs: '', offres: '', achats: '', recettes: 'bilan', stats: 'bilan' };
 function vue(v) {
   vueActive = v;
   Object.keys(ONGLET_DE).forEach(x => $('v-' + x).classList.toggle('cache', x !== v));
-  ['accueil', 'clientes', 'nouvelle', 'bilan', 'plus'].forEach(x => $('t-' + x).classList.toggle('actif', ONGLET_DE[v] === x));
+  ['accueil', 'agenda', 'clientes', 'nouvelle', 'bilan'].forEach(x => $('t-' + x).classList.toggle('actif', ONGLET_DE[v] === x));
   document.body.classList.toggle('en-saisie', v === 'nouvelle' && !$('formulaire').classList.contains('cache'));
   if (v === 'tarifs') afficherTarifs();
   if (v === 'accueil') afficherAccueil();
   if (v === 'recettes') afficherRecettes();
+  if (v === 'agenda') afficherAgenda();
   if (v === 'stats') afficherStats();
   window.scrollTo(0, 0);
 }
@@ -249,6 +251,7 @@ function ouvrirSaisie() {
 /** Accueil : prestations du jour + carte du salon (écran Plus). */
 function afficherAccueil() {
   if (!D) return;
+  afficherRdvAccueil();
   const z = $('journee'); z.innerHTML = '';
   const jour = D.journal.filter(r => r.iso === D.aujourdHuiIso).reverse();
   if (!jour.length) z.appendChild(el('p', 'discret', 'Aucune prestation enregistrée aujourd\'hui.'));
@@ -279,6 +282,7 @@ function maintenant() {
 }
 
 function nouvelleSaisie() {
+  rdvEnCours = null;
   cliente = null; choisis = []; prixManuel = false; offreChoisie = null; paiementChoisi = null;
   $('recherche').value = ''; $('prix').value = '';
   $('prixAuto').classList.add('cache');
@@ -456,6 +460,7 @@ function enregistrer() {
     : p.offre ? '🏷️ Offre appliquée : ' + p.offre.nom + ' ' + texteOffre(p.offre)
     : (GENERIQUES.includes(cliente.cle) ? '' : ((cliente.total || 0) + 1) + 'e passage au total.');
   mettreEnAttente(item);
+  if (rdvEnCours) { const id = rdvEnCours; rdvEnCours = null; envoyerRdv({ id, statut: 'fait' }); }
   majLocaleApresSaisie(cliente, p.date);
   afficherSucces(horsLigne ? '!' : '✓', horsLigne ? 'Gardé sur le téléphone' : 'Enregistré pour ' + p.client,
     horsLigne ? 'Pas d\'internet : la saisie sera envoyée automatiquement dès le retour du réseau.' : detail, aPayer);
@@ -1315,6 +1320,218 @@ function afficherStats() {
   [1, 2, 3, 4, 5, 6, 0].forEach(j => { jours[JOURS[j]] = 0; });
   L.forEach(r => { jours[JOURS[new Date(r.iso + 'T12:00:00').getDay()]]++; });
   barres($('stJours'), jours, () => '', 'Aucune prestation sur cette période.', v => v + ' prestation' + (v > 1 ? 's' : ''));
+}
+
+/* ======================= AGENDA ======================= */
+let jourAgenda = null, rdvEdition = null, rdvEnCours = null;
+const DUREES = [15, 30, 45, 60, 75, 90, 120, 150, 180, 240];
+const agenda = () => (D && D.agenda) || [];
+const isoPlus = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+const heureTexte = h => String(h || '').replace(':', ' h ');
+const minutes = h => { const m = String(h || '').match(/^(\d{2}):(\d{2})$/); return m ? +m[1] * 60 + +m[2] : 0; };
+const finRdv = r => { const t = minutes(r.heure) + (r.duree || 30); return pad(Math.floor(t / 60) % 24) + ':' + pad(t % 60); };
+const jourLong = iso => new Date(iso + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+const ficheDe = nom => D.clientes.find(c => c.cle === norm(nom));
+const dureeTexte = m => m < 60 ? m + ' min' : Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + pad(m % 60) : '');
+
+/** Met à jour l'agenda reçu du Google Sheet (en gardant les changements pas encore envoyés). */
+function majAgenda(liste) {
+  if (!D || !liste) return;
+  D.agenda = liste; lsSet(CLE_DONNEES, JSON.stringify(D));
+  if (vueActive === 'agenda') afficherAgenda();
+  if (vueActive === 'accueil') afficherAccueil();
+}
+
+/** Applique tout de suite le changement sur le téléphone, puis l'envoie au Google Sheet (même sans réseau : envoi plus tard). */
+function envoyerRdv(r, supprimer) {
+  const l = agenda().slice(), i = l.findIndex(x => x.id === r.id);
+  if (supprimer) { if (i >= 0) l.splice(i, 1); }
+  else {
+    const x = Object.assign(i >= 0 ? l[i] : { statut: 'prévu', rappel: '', note: '', duree: 30 }, r);
+    if (r.date) x.iso = r.date;
+    if (r.rappel === true) x.rappel = new Date().toLocaleDateString('fr-FR');
+    if (i < 0) l.push(x);
+    l.sort((a, b) => (a.iso + a.heure).localeCompare(b.iso + b.heure));
+  }
+  D.agenda = l; lsSet(CLE_DONNEES, JSON.stringify(D));
+  mettreEnAttente({ action: supprimer ? 'rdv_supprimer' : 'rdv', uid: uid(), extra: supprimer ? { id: r.id } : { r }, resume: 'rendez-vous' });
+  envoyerAttente();
+  if (vueActive === 'agenda') afficherAgenda();
+  if (vueActive === 'accueil') afficherAccueil();
+}
+
+function texteRappel(r) {
+  const demain = r.iso === isoPlus(D.aujourdHuiIso, 1), auj = r.iso === D.aujourdHuiIso;
+  const quand = auj ? 'aujourd\'hui' : demain ? 'demain' : 'le ' + jourLong(r.iso);
+  return 'Bonjour ' + r.client + ', petit rappel de votre rendez-vous chez ' + nomSalon() + ' ' + quand + ' à ' + heureTexte(r.heure) +
+    '. En cas d\'empêchement, merci de répondre à ce message. À bientôt !';
+}
+
+/** Carte d'un rendez-vous. */
+function carteRdv(r, compacte) {
+  const k = el('div', 'carte rdv rdv-' + (r.statut === 'fait' ? 'fait' : r.statut === 'annulé' ? 'annule' : 'prevu'));
+  const h = el('div', 'rdv-heure'); h.appendChild(el('b', '', r.heure)); h.appendChild(el('small', '', finRdv(r)));
+  const c = el('div', 'rdv-corps');
+  const l1 = el('div', 'ligne1'); l1.appendChild(el('span', '', r.client));
+  if (r.statut === 'fait') l1.appendChild(el('span', 'badge', '✓ Encaissé'));
+  else if (r.statut === 'annulé') l1.appendChild(el('span', 'badge badge-gris', 'Annulé'));
+  else if (r.rappel) l1.appendChild(el('span', 'badge badge-gris', '📩 Rappel envoyé'));
+  c.appendChild(l1);
+  const det = [r.prestation, dureeTexte(r.duree), r.note].filter(Boolean).join(' · ');
+  if (det) c.appendChild(el('div', 'ligne2', det));
+  const act = el('div', 'actions');
+  if (r.statut === 'prévu') {
+    if (r.iso <= D.aujourdHuiIso) { const b = el('button', 'lien', '💶 Encaisser'); b.onclick = () => encaisserRdv(r); act.appendChild(b); }
+    if (r.iso >= D.aujourdHuiIso) act.appendChild(lienRappel(r, r.rappel ? '📩 Renvoyer' : '📩 Rappel SMS'));
+  }
+  if (!compacte || r.statut !== 'prévu') { const b = el('button', 'lien', '✏️ Modifier'); b.onclick = () => ouvrirRdv(r); act.appendChild(b); }
+  if (act.children.length) c.appendChild(act);
+  k.appendChild(h); k.appendChild(c);
+  return k;
+}
+
+function lienRappel(r, texte) {
+  const f = ficheDe(r.client);
+  const a = el('a', 'lien lien-a', texte);
+  a.href = lienSms(f && f.tel, texteRappel(r));
+  a.onclick = () => { setTimeout(() => envoyerRdv({ id: r.id, rappel: true }), 400); };
+  return a;
+}
+
+/** Carte « Rappels pour demain » : un toucher par personne, le message est déjà écrit. */
+function carteRappels(zone) {
+  zone.innerHTML = '';
+  const demain = isoPlus(D.aujourdHuiIso, 1);
+  const liste = agenda().filter(r => r.iso === demain && r.statut === 'prévu');
+  if (!liste.length) return;
+  const restants = liste.filter(r => !r.rappel).length;
+  const k = el('div', 'carte rappels');
+  const l1 = el('div', 'ligne1'); l1.appendChild(el('span', '', '📩 Rappels pour demain')); l1.appendChild(el('span', 'badge' + (restants ? ' badge-alerte' : ''), restants ? restants + ' à envoyer' : 'Tous envoyés ✓'));
+  k.appendChild(l1);
+  k.appendChild(el('div', 'ligne2', 'Touche un nom : le SMS s\'ouvre avec le message déjà écrit, il ne reste qu\'à l\'envoyer.'));
+  const z = el('div', 'liens-clientes');
+  liste.forEach(r => { const a = lienRappel(r, (r.rappel ? '✓ ' : '') + r.heure + ' · ' + r.client); a.className = 'puce' + (r.rappel ? ' envoye' : ''); z.appendChild(a); });
+  k.appendChild(z);
+  zone.appendChild(k);
+}
+
+function afficherRdvAccueil() {
+  const z = $('rdvJour'); z.innerHTML = '';
+  const jour = agenda().filter(r => r.iso === D.aujourdHuiIso && r.statut !== 'annulé');
+  if (!jour.length) {
+    const p = el('p', 'discret', 'Aucun rendez-vous aujourd\'hui. ');
+    const b = el('button', 'lien', 'Ouvrir l\'agenda'); b.style.minHeight = '0'; b.style.padding = '0'; b.onclick = () => vue('agenda');
+    p.appendChild(b); z.appendChild(p);
+  }
+  jour.forEach(r => z.appendChild(carteRdv(r, true)));
+  carteRappels($('rappelsAccueil'));
+}
+
+function allerAujourdhui() { jourAgenda = D.aujourdHuiIso; afficherAgenda(); }
+function changerSemaine(n) { jourAgenda = isoPlus(jourAgenda || D.aujourdHuiIso, 7 * n); afficherAgenda(); }
+
+function afficherAgenda() {
+  if (!D) return;
+  if (!jourAgenda) jourAgenda = D.aujourdHuiIso;
+  // Semaine du lundi au dimanche contenant le jour choisi
+  const d = new Date(jourAgenda + 'T12:00:00'), decal = (d.getDay() + 6) % 7, lundi = isoPlus(jourAgenda, -decal);
+  const z = $('jours'); z.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const iso = isoPlus(lundi, i), j = new Date(iso + 'T12:00:00');
+    const nb = agenda().filter(r => r.iso === iso && r.statut !== 'annulé').length;
+    const b = el('button', 'jour' + (iso === jourAgenda ? ' on' : '') + (iso === D.aujourdHuiIso ? ' auj' : ''));
+    b.appendChild(el('small', '', j.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')));
+    b.appendChild(el('b', '', String(j.getDate())));
+    b.appendChild(el('i', nb ? 'plein' : '', nb ? String(nb) : ''));
+    b.onclick = () => { jourAgenda = iso; afficherAgenda(); };
+    z.appendChild(b);
+  }
+  const liste = agenda().filter(r => r.iso === jourAgenda);
+  const actifs = liste.filter(r => r.statut !== 'annulé');
+  const duree = actifs.reduce((s, r) => s + (r.duree || 0), 0);
+  $('titreJour').textContent = jourLong(jourAgenda) + (actifs.length ? ' · ' + actifs.length + ' rdv · ' + dureeTexte(duree) : '');
+  const box = $('listeRdv'); box.innerHTML = '';
+  if (!liste.length) box.appendChild(el('p', 'discret', 'Aucun rendez-vous ce jour-là.'));
+  liste.forEach(r => box.appendChild(carteRdv(r, false)));
+  carteRappels($('rappelsAgenda'));
+}
+
+/* Fenêtre de rendez-vous */
+let rdvChoisis = [];
+function ouvrirRdv(r) {
+  rdvEdition = r || null;
+  $('rdvTitre').textContent = r ? 'Modifier le rendez-vous' : 'Nouveau rendez-vous';
+  $('rdvSupprimer').classList.toggle('cache', !r);
+  const sd = $('rdvDuree'); sd.innerHTML = '';
+  const duree = r ? r.duree : 30;
+  DUREES.concat(DUREES.includes(duree) ? [] : [duree]).sort((a, b) => a - b).forEach(m => sd.appendChild(new Option(dureeTexte(m), m)));
+  sd.value = duree;
+  $('rdvClient').value = r ? r.client : '';
+  $('rdvDate').value = r ? r.iso : (jourAgenda || D.aujourdHuiIso);
+  $('rdvHeure').value = r ? r.heure : '';
+  $('rdvNote').value = r ? r.note : '';
+  $('rdvPrestation').value = r ? r.prestation : '';
+  rdvChoisis = r ? String(r.prestation).split(' + ').filter(n => D.tarifs.some(t => t.nom === n)) : [];
+  const z = $('rdvPrestas'); z.innerHTML = '';
+  D.tarifs.forEach(t => {
+    const b = el('button', 'presta' + (rdvChoisis.includes(t.nom) ? ' on' : ''), t.nom);
+    b.onclick = () => {
+      const i = rdvChoisis.indexOf(t.nom);
+      if (i >= 0) rdvChoisis.splice(i, 1); else rdvChoisis.push(t.nom);
+      b.classList.toggle('on', i < 0);
+      $('rdvPrestation').value = rdvChoisis.join(' + ');
+    };
+    z.appendChild(b);
+  });
+  $('modaleRdv').classList.remove('cache');
+  document.body.style.overflow = 'hidden';
+  if (!r) setTimeout(() => $('rdvClient').focus(), 100);
+}
+function fermerRdv() { $('modaleRdv').classList.add('cache'); document.body.style.overflow = ''; rdvEdition = null; }
+
+function sauverRdv() {
+  const saisi = $('rdvClient').value.trim();
+  const f = saisi && ficheDe(saisi);
+  const r = {
+    id: rdvEdition ? rdvEdition.id : 'r' + uid(), client: f ? f.nom : saisi, date: $('rdvDate').value, heure: $('rdvHeure').value,
+    duree: Number($('rdvDuree').value) || 30, prestation: $('rdvPrestation').value.trim(), note: $('rdvNote').value.trim(),
+  };
+  if (!r.client) return message(M('👉 Indique la cliente.', '👉 Indique le client.'));
+  if (!r.date) return message('👉 Indique la date.');
+  if (!/^\d{2}:\d{2}$/.test(r.heure)) return message('👉 Indique l\'heure.');
+  const debut = minutes(r.heure), fin = debut + r.duree;
+  const conflit = agenda().find(x => x.id !== r.id && x.iso === r.date && x.statut !== 'annulé' && minutes(x.heure) < fin && minutes(x.heure) + (x.duree || 30) > debut);
+  if (conflit && !confirm('Attention : ce créneau chevauche le rendez-vous de ' + conflit.client + ' (' + conflit.heure + ' – ' + finRdv(conflit) + ').\n\nEnregistrer quand même ?')) return;
+  const change = rdvEdition && (rdvEdition.iso !== r.date || rdvEdition.heure !== r.heure);
+  if (change) r.rappel = false; // nouvel horaire : un nouveau rappel sera à envoyer
+  fermerRdv();
+  jourAgenda = r.date;
+  envoyerRdv(r);
+  message('📅 Rendez-vous enregistré : ' + r.client + ', ' + jourLong(r.date) + ' à ' + heureTexte(r.heure) + '.');
+  if (vueActive !== 'agenda' && vueActive !== 'accueil') vue('agenda');
+}
+
+function supprimerRdv() {
+  const r = rdvEdition;
+  if (!r || !confirm('Supprimer le rendez-vous de ' + r.client + ' (' + jourLong(r.iso) + ' à ' + heureTexte(r.heure) + ') ?')) return;
+  fermerRdv();
+  envoyerRdv({ id: r.id }, true);
+  message('🗑 Rendez-vous supprimé.');
+}
+
+/** « Encaisser » : ouvre une nouvelle prestation déjà remplie avec le rendez-vous. */
+function encaisserRdv(r) {
+  nouvelleSaisie();
+  const f = ficheDe(r.client);
+  choisirCliente(f || { nom: r.client, cle: norm(r.client), total: 0, depuis: 0, nouvelle: true });
+  String(r.prestation).split(' + ').forEach(n => {
+    const b = Array.from(document.querySelectorAll('#prestations .presta, #options .presta')).find(x => x.firstChild && x.firstChild.nodeValue === n);
+    if (b) b.click();
+  });
+  $('date').value = r.iso; $('heure').value = r.heure;
+  majResume();
+  rdvEnCours = r.id;
+  vue('nouvelle');
 }
 
 /* ---------- Démarrage ---------- */

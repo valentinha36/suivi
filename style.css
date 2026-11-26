@@ -380,6 +380,50 @@ body.sans-offres.sans-fidelite .m-offres-ou-fidelite { display: none !important;
   tr { break-inside: avoid; }
 }
 
+
+/* ---------- En-tête : bouton Plus ---------- */
+.appbar { display: flex; align-items: center; gap: 10px; }
+.appbar-texte { flex: 1; min-width: 0; }
+.appbar-bouton {
+  flex: 0 0 auto; width: 42px; height: 42px; border-radius: 13px; border: none; background: rgba(255, 255, 255, .16); color: #fff;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.appbar-bouton:active { transform: scale(.94); }
+@media (min-width: 720px) { .appbar { padding-left: calc((100vw - 680px) / 2); padding-right: calc((100vw - 680px) / 2); } }
+
+/* ---------- Agenda ---------- */
+.agenda-tete { display: flex; justify-content: space-between; align-items: center; }
+.agenda-tete .titre-ecran { margin-bottom: 10px; }
+.semaine { display: flex; align-items: center; gap: 4px; }
+.fleche { flex: 0 0 32px; height: 64px; border: none; background: none; color: var(--gris); font-size: 26px; cursor: pointer; }
+.jours { flex: 1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.jour {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 6px; border-radius: 14px; border: 1.5px solid transparent;
+  background: var(--carte); color: var(--texte); cursor: pointer; min-height: 64px; font-family: inherit;
+}
+.jour small { font-size: 11px; font-weight: 600; color: var(--gris); text-transform: capitalize; }
+.jour b { font-size: 17px; font-weight: 800; }
+.jour i { font-style: normal; font-size: 10px; font-weight: 800; min-width: 16px; height: 16px; line-height: 16px; border-radius: 8px; }
+.jour i.plein { background: var(--teinte); color: var(--accent-texte); }
+.jour.auj { border-color: var(--rose); }
+.jour.on { background: var(--puce-on); color: #fff; border-color: var(--puce-on); }
+.jour.on small { color: rgba(255, 255, 255, .8); }
+.jour.on i.plein { background: rgba(255, 255, 255, .25); color: #fff; }
+.rdv { display: flex; gap: 14px; align-items: flex-start; }
+.rdv-heure { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; min-width: 50px; padding-right: 12px; border-right: 3px solid var(--rose); }
+.rdv-heure b { font-size: 17px; font-weight: 800; }
+.rdv-heure small { font-size: 12px; color: var(--gris); }
+.rdv-corps { flex: 1; min-width: 0; }
+.rdv-corps .actions { flex-wrap: wrap; gap: 4px 18px; }
+.rdv-fait .rdv-heure { border-right-color: var(--vert); }
+.rdv-annule { opacity: .55; }
+.rdv-annule .rdv-heure { border-right-color: var(--trait); }
+.badge-gris { background: var(--fond); color: var(--gris); }
+.badge-alerte { background: var(--alerte-fond); color: var(--alerte-texte); }
+.lien-a { text-decoration: none; display: inline-flex; align-items: center; }
+.rappels .liens-clientes .puce { text-decoration: none; }
+.rappels .liens-clientes .puce.envoye { background: var(--fond); color: var(--gris); }
+
 /* ---------- Mode sombre (suit le réglage du téléphone) ---------- */
 @media (prefers-color-scheme: dark) {
   :root {
