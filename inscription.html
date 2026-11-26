@@ -73,8 +73,9 @@
         <div><label class="etiquette" for="pin">Code</label><input type="password" id="pin" inputmode="numeric" maxlength="8" autocomplete="new-password"></div>
         <div><label class="etiquette" for="pin2">Encore une fois</label><input type="password" id="pin2" inputmode="numeric" maxlength="8" autocomplete="new-password"></div>
       </div>
-      <label class="etiquette" for="email">Ton e-mail (conseillé)</label>
-      <input type="text" id="email" inputmode="email" autocomplete="email" maxlength="120" placeholder="pour recevoir un nouveau code si tu l'oublies">
+      <label class="etiquette" for="email">E-mail de récupération</label>
+      <input type="text" id="email" inputmode="email" autocomplete="email" maxlength="120" placeholder="ex. prenom@gmail.com">
+      <p class="discret" style="margin:6px 0 0">Si tu oublies ton code, tu recevras ici un lien pour en choisir un nouveau. Il ne sert à rien d'autre : pas de publicité.</p>
       <div class="piege" aria-hidden="true"><label>Site web <input type="text" id="site" tabindex="-1" autocomplete="off"></label></div>
       <label class="case"><input type="checkbox" id="accord">
         <span>J'ai compris que mes données et celles de mes clients sont enregistrées dans un Google Sheet géré par le prestataire de l'application, uniquement pour la faire fonctionner. Je reste responsable des données de mes clients et je les informe (affiche RGPD fournie sur demande).</span></label>
@@ -165,6 +166,7 @@ function creer() {
   if (!f.mot) return refus('Choisis ta clientèle.');
   if (!/^\d{4,8}$/.test(f.pin)) return refus('Le code doit faire de 4 à 8 chiffres.');
   if (f.pin !== $('pin2').value.trim()) return refus('Les deux codes ne sont pas identiques.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) return refus('Indique ton e-mail de récupération (pour retrouver l\'accès si tu oublies ton code).');
   if (!$('accord').checked) return refus('Coche la case d\'information sur les données.');
   if (Date.now() - debut < 4000) return refus('Vérifie tes réponses puis réessaie.');
   $('formulaire').classList.add('cache'); $('attente').classList.remove('cache'); window.scrollTo(0, 0);
