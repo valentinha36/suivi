@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=16">
+<link rel="stylesheet" href="style.css?v=18">
 <style>
   .intro { background: var(--degrade); color: #fff; border-radius: 24px; padding: 24px 20px; box-shadow: var(--ombre-forte); margin-bottom: 16px; }
   .intro h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; margin: 0 0 8px; line-height: 1.2; }
@@ -97,6 +97,9 @@
     <div class="carte">
       <div class="ligne1">Ton code d'accès</div>
       <div class="code-final" id="finiCode"></div>
+      <div class="ligne1" style="margin-top:16px">Ton code de secours</div>
+      <div class="code-final" id="finiSecours" style="font-size:22px;letter-spacing:2px;font-family:ui-monospace,Menlo,Consolas,monospace"></div>
+      <p class="discret" style="margin-top:4px">Il sert si tu oublies ton code d'accès (lien « Code oublié ? »). <b>Fais une capture d'écran de cette page maintenant</b> : il ne sera plus affiché.</p>
       <div class="ligne1" style="margin-top:16px">Le lien de ton application</div>
       <div class="lien-final" id="finiLien"></div>
       <button class="gros secondaire" onclick="copier()">Copier le lien</button>
@@ -178,6 +181,7 @@ function creer() {
       } catch (e) { /* stockage indisponible */ }
       $('finiTexte').textContent = 'L\'application « ' + resultat.nom + ' » est créée.';
       $('finiCode').textContent = f.pin;
+      $('finiSecours').textContent = resultat.secours || '';
       $('finiLien').textContent = resultat.lien;
       $('finiOuvrir').href = resultat.lien;
       $('attente').classList.add('cache'); $('fini').classList.remove('cache');

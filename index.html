@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=17">
+<link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 <header class="appbar">
@@ -42,6 +42,19 @@
            onkeydown="if(event.key==='Enter')validerPin()">
     <p id="pinMsg" class="pin-msg"></p>
     <button class="gros" onclick="validerPin()">Entrer</button>
+    <button class="lien" id="lienOubli" style="display:block;margin:14px auto 0" onclick="ouvrirOubli()">Code oublié ?</button>
+    <div id="oubli" class="carte cache" style="margin-top:14px">
+      <div class="ligne1">Choisir un nouveau code</div>
+      <div class="ligne2">Avec le code de secours reçu à ton inscription (ex. K7MQ-4PXA-92HT).</div>
+      <label class="etiquette" for="oubliSecours">Code de secours</label>
+      <input type="text" id="oubliSecours" autocomplete="off" autocapitalize="characters" maxlength="20" placeholder="XXXX-XXXX-XXXX">
+      <div class="quand">
+        <div><label class="etiquette" for="oubliPin">Nouveau code</label><input type="password" id="oubliPin" inputmode="numeric" maxlength="8" autocomplete="new-password"></div>
+        <div><label class="etiquette" for="oubliPin2">Encore une fois</label><input type="password" id="oubliPin2" inputmode="numeric" maxlength="8" autocomplete="new-password"></div>
+      </div>
+      <button class="gros" id="btnOubli" onclick="validerOubli()">Enregistrer le nouveau code</button>
+      <p class="discret" style="margin-bottom:0">Pas de code de secours ? Contacte la personne qui t'a donné l'application.</p>
+    </div>
   </section>
 
   <!-- ============ ACCUEIL ============ -->
@@ -556,6 +569,6 @@
   </button>
 </nav>
 <div id="msg" class="msg" role="status"></div>
-<script src="app.js?v=28"></script>
+<script src="app.js?v=29"></script>
 </body>
 </html>

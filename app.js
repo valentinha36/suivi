@@ -138,6 +138,28 @@ function demanderPin(msg) {
   $('pinMsg').textContent = msg || '';
   $('pin').value = ''; $('pin').focus();
 }
+function ouvrirOubli() {
+  if (!SALON) return message('Contacte la personne qui t\'a donné l\'application pour retrouver ton code.', 6000);
+  $('oubli').classList.remove('cache'); $('lienOubli').classList.add('cache'); $('oubliSecours').focus();
+}
+function validerOubli() {
+  const secours = $('oubliSecours').value.trim(), pin = $('oubliPin').value.trim();
+  if (secours.replace(/[^A-Za-z0-9]/g, '').length < 12) return message('👉 Le code de secours a 12 caractères (ex. K7MQ-4PXA-92HT).');
+  if (!/^\d{4,8}$/.test(pin)) return message('👉 Le nouveau code doit faire de 4 à 8 chiffres.');
+  if (pin !== $('oubliPin2').value.trim()) return message('👉 Les deux codes ne sont pas identiques.');
+  const b = $('btnOubli'); b.disabled = true;
+  api('nouveau_code', { secours, pin })
+    .then(() => {
+      PIN = pin; lsSet(CLE_PIN, pin);
+      $('oubli').classList.add('cache'); $('lienOubli').classList.remove('cache');
+      ['oubliSecours', 'oubliPin', 'oubliPin2'].forEach(id => { $(id).value = ''; });
+      message('✅ Nouveau code enregistré.');
+      $('v-pin').classList.add('cache'); $('chargement').classList.remove('cache');
+      charger();
+    })
+    .catch(e => erreur(e.horsLigne ? 'Pas d\'internet : réessaie quand le réseau revient.' : e))
+    .finally(() => { b.disabled = false; });
+}
 function validerPin() {
   PIN = $('pin').value.trim();
   $('v-pin').classList.add('cache'); $('chargement').classList.remove('cache');
@@ -1694,6 +1716,22 @@ function afficherReglagesEcran() {
   b6.appendChild(el('div', 'ligne2', 'Laisse vide pour garder ton code actuel.'));
   champ(b6, 'regPin', 'Nouveau code (4 à 8 chiffres)', '', { type: 'password', inputMode: 'numeric', maxLength: 8, autocomplete: 'new-password' });
   champ(b6, 'regPin2', 'Encore une fois', '', { type: 'password', inputMode: 'numeric', maxLength: 8, autocomplete: 'new-password' });
+  if (SALON) {
+    b6.appendChild(el('label', 'etiquette', 'Code de secours'));
+    b6.appendChild(el('div', 'ligne2', 'Il permet de choisir un nouveau code si tu oublies le tien (lien « Code oublié ? »). Crée-le et garde-le précieusement : capture d\'écran, note…'));
+    const zs = el('div', 'secours-boite cache'); zs.id = 'regSecours';
+    const bs = el('button', 'lien', '🔑 Créer un code de secours');
+    bs.onclick = () => {
+      if (!confirm('Créer un nouveau code de secours ?\n\nL\'ancien (s\'il existe) ne marchera plus.')) return;
+      bs.disabled = true;
+      api('creer_secours').then(j => {
+        zs.textContent = ''; zs.classList.remove('cache');
+        zs.appendChild(el('div', 'secours-code', j.data.secours));
+        zs.appendChild(el('div', 'ligne2', '📸 Fais une capture d\'écran maintenant : ce code ne sera plus jamais affiché.'));
+      }).catch(e => erreur(e.horsLigne ? 'Pas d\'internet : réessaie quand le réseau revient.' : e)).finally(() => { bs.disabled = false; });
+    };
+    b6.appendChild(bs); b6.appendChild(zs);
+  }
 }
 
 /** Réduit l'image choisie en carré de 192 px (léger : enregistré directement dans le Google Sheet). */
