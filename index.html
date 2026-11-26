@@ -44,8 +44,11 @@
     <button class="gros" onclick="validerPin()">Entrer</button>
     <button class="lien" id="lienOubli" style="display:block;margin:14px auto 0" onclick="ouvrirOubli()">Code oublié ?</button>
     <div id="oubli" class="carte cache" style="margin-top:14px">
-      <div class="ligne1">Choisir un nouveau code</div>
-      <div class="ligne2">Avec le code de secours reçu à ton inscription (ex. K7MQ-4PXA-92HT).</div>
+      <div class="ligne1">Code oublié</div>
+      <button class="gros" id="btnOubliEmail" onclick="demanderEmailCode()">📧 Recevoir un lien par e-mail</button>
+      <div class="ligne2" id="oubliEmailMsg" style="margin-top:10px"></div>
+      <div class="ligne1" style="margin-top:20px">Ou avec ton code de secours</div>
+      <div class="ligne2">Reçu à ton inscription (ex. K7MQ-4PXA-92HT).</div>
       <label class="etiquette" for="oubliSecours">Code de secours</label>
       <input type="text" id="oubliSecours" autocomplete="off" autocapitalize="characters" maxlength="20" placeholder="XXXX-XXXX-XXXX">
       <div class="quand">
@@ -53,7 +56,15 @@
         <div><label class="etiquette" for="oubliPin2">Encore une fois</label><input type="password" id="oubliPin2" inputmode="numeric" maxlength="8" autocomplete="new-password"></div>
       </div>
       <button class="gros" id="btnOubli" onclick="validerOubli()">Enregistrer le nouveau code</button>
-      <p class="discret" style="margin-bottom:0">Pas de code de secours ? Contacte la personne qui t'a donné l'application.</p>
+      <p class="discret" style="margin-bottom:0">Ni e-mail ni code de secours ? Contacte la personne qui t'a donné l'application.</p>
+    </div>
+    <div id="resetEmail" class="carte cache" style="margin-top:14px">
+      <div class="ligne1">Choisis ton nouveau code</div>
+      <div class="quand">
+        <div><label class="etiquette" for="resetPin">Nouveau code</label><input type="password" id="resetPin" inputmode="numeric" maxlength="8" autocomplete="new-password"></div>
+        <div><label class="etiquette" for="resetPin2">Encore une fois</label><input type="password" id="resetPin2" inputmode="numeric" maxlength="8" autocomplete="new-password"></div>
+      </div>
+      <button class="gros" id="btnReset" onclick="validerResetEmail()">Enregistrer le nouveau code</button>
     </div>
   </section>
 
@@ -569,6 +580,6 @@
   </button>
 </nav>
 <div id="msg" class="msg" role="status"></div>
-<script src="app.js?v=29"></script>
+<script src="app.js?v=30"></script>
 </body>
 </html>

@@ -7,6 +7,8 @@
 const SERVEUR_CENTRAL = 'https://script.google.com/macros/s/AKfycbxWejimyOL5FGpNqy3qYO6JLQZswiVAsl_CDho2ueERr3MP3WwFob3f8E_UDSnLzZQE/exec';
 const API_VALIDE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]{20,}\/exec$/;
 const SALON_VALIDE = /^[\w-]{25,80}$/;
+// Lien « nouveau code » reçu par e-mail (lu avant que l'adresse soit nettoyée)
+const RESET = (() => { try { const r = new URLSearchParams(location.search).get('reset') || ''; return /^[0-9a-f]{64}$/.test(r) ? r : ''; } catch (e) { return ''; } })();
 const { API, SALON } = (function () {
   let q = null;
   try { q = new URLSearchParams(location.search); } catch (e) { q = null; }
@@ -138,6 +140,38 @@ function demanderPin(msg) {
   $('pinMsg').textContent = msg || '';
   $('pin').value = ''; $('pin').focus();
 }
+let resetTraite = false;
+function afficherResetEmail() {
+  demanderPin('');
+  ['pin', 'lienOubli'].forEach(id => $(id).classList.add('cache'));
+  document.querySelector('#v-pin > .gros').classList.add('cache');
+  $('resetEmail').classList.remove('cache'); $('resetPin').focus();
+}
+function validerResetEmail() {
+  const pin = $('resetPin').value.trim();
+  if (!/^\d{4,8}$/.test(pin)) return message('👉 Le nouveau code doit faire de 4 à 8 chiffres.');
+  if (pin !== $('resetPin2').value.trim()) return message('👉 Les deux codes ne sont pas identiques.');
+  const b = $('btnReset'); b.disabled = true;
+  api('nouveau_code_email', { jeton: RESET, pin })
+    .then(() => {
+      resetTraite = true; PIN = pin; lsSet(CLE_PIN, pin);
+      $('resetEmail').classList.add('cache');
+      ['pin', 'lienOubli'].forEach(id => $(id).classList.remove('cache'));
+      document.querySelector('#v-pin > .gros').classList.remove('cache');
+      message('✅ Nouveau code enregistré.');
+      $('v-pin').classList.add('cache'); $('chargement').classList.remove('cache');
+      charger();
+    })
+    .catch(e => erreur(e.horsLigne ? 'Pas d\'internet : réessaie quand le réseau revient.' : e))
+    .finally(() => { b.disabled = false; });
+}
+function demanderEmailCode() {
+  const b = $('btnOubliEmail'); b.disabled = true; $('oubliEmailMsg').textContent = 'Envoi en cours…';
+  api('oubli_email')
+    .then(j => { $('oubliEmailMsg').textContent = '✅ Lien envoyé à ' + j.data.email + '. Ouvre l\'e-mail sur ce téléphone (pense à regarder dans les spams). Le lien est valable 1 heure.'; })
+    .catch(e => { $('oubliEmailMsg').textContent = '⚠️ ' + (e.horsLigne ? 'Pas d\'internet : réessaie quand le réseau revient.' : e.message); })
+    .finally(() => { b.disabled = false; });
+}
 function ouvrirOubli() {
   if (!SALON) return message('Contacte la personne qui t\'a donné l\'application pour retrouver ton code.', 6000);
   $('oubli').classList.remove('cache'); $('lienOubli').classList.add('cache'); $('oubliSecours').focus();
@@ -173,6 +207,7 @@ function charger() {
     p.appendChild(l); c.appendChild(p);
     return;
   }
+  if (RESET && SALON && !resetTraite) return afficherResetEmail();
   if (!PIN) return demanderPin();
   api('donnees').then(j => {
     lsSet(CLE_PIN, PIN);
@@ -1717,6 +1752,8 @@ function afficherReglagesEcran() {
   champ(b6, 'regPin', 'Nouveau code (4 à 8 chiffres)', '', { type: 'password', inputMode: 'numeric', maxLength: 8, autocomplete: 'new-password' });
   champ(b6, 'regPin2', 'Encore une fois', '', { type: 'password', inputMode: 'numeric', maxLength: 8, autocomplete: 'new-password' });
   if (SALON) {
+    champ(b6, 'regEmail', 'Ton e-mail (pour le « Code oublié ? »)', (g.email || ''), { inputMode: 'email', autocomplete: 'email', maxLength: 120, placeholder: 'ex. prenom@gmail.com' },
+      'Si tu oublies ton code, tu recevras un lien à cette adresse pour en choisir un nouveau.');
     b6.appendChild(el('label', 'etiquette', 'Code de secours'));
     b6.appendChild(el('div', 'ligne2', 'Il permet de choisir un nouveau code si tu oublies le tien (lien « Code oublié ? »). Crée-le et garde-le précieusement : capture d\'écran, note…'));
     const zs = el('div', 'secours-boite cache'); zs.id = 'regSecours';
@@ -1760,9 +1797,11 @@ function sauverReglages() {
   if (v('regNom').length < 2) return message('👉 Indique le nom affiché.');
   if (pin && !/^\d{4,8}$/.test(pin)) return message('👉 Le code doit faire de 4 à 8 chiffres.');
   if (pin && pin !== v('regPin2')) return message('👉 Les deux codes ne sont pas identiques.');
+  if ($('regEmail') && v('regEmail') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v('regEmail'))) return message('👉 Adresse e-mail invalide.');
   if (v('regAvis') && !/^https:\/\/\S+$/.test(v('regAvis'))) return message('👉 Le lien d\'avis doit commencer par https://');
   const r = {
     nom: v('regNom'), metier: regEdition.metier, mot: regEdition.mot, modules: regEdition.modules, pin,
+    email: $('regEmail') ? v('regEmail') : undefined,
     plus: { couleur: regEdition.couleur, logo: regEdition.logo, avis: v('regAvis'), relance: v('regRelance'), deplacement: v('regDeplacement'),
       objectif: v('regObjectif'), seuil: v('regSeuil'), urssaf: v('regUrssaf') },
   };
