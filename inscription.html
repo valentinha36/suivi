@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="style.css?v=15">
 <style>
   .intro { background: var(--degrade); color: #fff; border-radius: 24px; padding: 24px 20px; box-shadow: var(--ombre-forte); margin-bottom: 16px; }
   .intro h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; margin: 0 0 8px; line-height: 1.2; }
@@ -48,10 +48,17 @@
       <input type="text" id="nom" maxlength="60" placeholder="ex. Ongles by Julie" autocomplete="organization">
       <label class="etiquette">Ton métier</label>
       <div class="choix-metier" id="metiers"></div>
+      <p class="discret" style="margin-bottom:0">Ton métier sert à préremplir tes prestations et tes prix de départ. Tu pourras ensuite tout modifier dans l'application : prestations, prix, options, offres et fonctions (Plus → Tarifs et Plus → Réglages).</p>
     </div>
 
     <div class="bloc">
-      <h2 class="titre-bloc"><span class="etape">2</span>Ta clientèle</h2>
+      <h2 class="titre-bloc"><span class="etape">2</span>Ta couleur</h2>
+      <div class="paiements" id="couleurs"></div>
+      <p class="discret" style="margin-bottom:0">Tu pourras la changer quand tu veux dans Plus → Réglages, et y ajouter ton logo.</p>
+    </div>
+
+    <div class="bloc">
+      <h2 class="titre-bloc"><span class="etape">3</span>Ta clientèle</h2>
       <div class="paiements" id="mots">
         <button class="puce" data-mot="Cliente">👩 Surtout des femmes</button>
         <button class="puce" data-mot="Client">👨 Surtout des hommes</button>
@@ -60,7 +67,7 @@
     </div>
 
     <div class="bloc">
-      <h2 class="titre-bloc"><span class="etape">3</span>Ton code d'accès</h2>
+      <h2 class="titre-bloc"><span class="etape">4</span>Ton code d'accès</h2>
       <p class="discret" style="margin-top:0">4 à 8 chiffres. Il sera demandé une seule fois sur chaque téléphone. Note-le bien.</p>
       <div class="quand">
         <div><label class="etiquette" for="pin">Code</label><input type="password" id="pin" inputmode="numeric" maxlength="8" autocomplete="new-password"></div>
@@ -99,6 +106,10 @@
       <div class="ligne1">Installer sur ton téléphone</div>
       <div class="ligne2">Ouvre l'application, puis :<br>• iPhone (Safari) : bouton Partager → « Sur l'écran d'accueil »<br>• Android (Chrome) : menu ⋮ → « Ajouter à l'écran d'accueil »</div>
     </div>
+    <div class="carte">
+      <div class="ligne1">Personnaliser</div>
+      <div class="ligne2">Dans l'application, touche le bouton carré en haut à droite (Plus) : Tarifs pour tes prestations et tes prix, Réglages pour ton logo, ta couleur et les fonctions à afficher.</div>
+    </div>
     <a class="gros bouton-lien" id="finiOuvrir" href="#">Ouvrir mon application</a>
   </section>
 </main>
@@ -109,7 +120,28 @@ var SERVEUR = 'https://script.google.com/macros/s/AKfycbxWejimyOL5FGpNqy3qYO6JLQ
 var METIERS = [['Onglerie', '💅'], ['Coiffure et barbier', '✂️'], ['Esthétique', '🌸'], ['Bien-être', '🌿'], ['Tatouage et piercing', '✒️'],
   ['Sport et coaching', '🏋️'], ['Cours et formation', '📚'], ['Services aux animaux', '🐾'], ['Services à domicile', '🏠'],
   ['Couture et retouches', '🧵'], ['Photographie', '📷'], ['Conseil et accompagnement', '🧭'], ['Transport de personnes', '🚗']];
-var metier = '', mot = '', debut = Date.now(), resultat = null;
+var metier = '', mot = '', couleur = 'Prune et rose', debut = Date.now(), resultat = null;
+// Couleurs de l'application : [accent, foncé, moyen, clair] (mêmes thèmes que l'application)
+var COULEURS = {
+  'Prune et rose': ['#d6457a', '#2d2140', '#6b2f5e', '#fbeef3', '#b23466'], 'Bleu nuit': ['#3b82c4', '#14284a', '#1e4f8a', '#e8f1fa', '#245f9e'],
+  'Vert sauge': ['#6b9a7d', '#2f4a3c', '#4f7a62', '#ecf4ee', '#4f7a62'], 'Noir et or': ['#b08d57', '#111111', '#2b2420', '#f6f0e6', '#8a6b3c'],
+  'Terracotta': ['#c8643b', '#5a2f22', '#9a4a30', '#fbede6', '#a14d2b'], 'Lavande': ['#8a74c9', '#3a2f5e', '#6a5aa8', '#f1edfb', '#6a58ac'],
+};
+/** Aperçu immédiat : la page prend la couleur choisie. */
+function appliquerCouleur(nom) {
+  var t = COULEURS[nom], st = document.documentElement.style;
+  st.setProperty('--rose', t[0]); st.setProperty('--rose-clair', t[3]);
+  st.setProperty('--degrade', 'linear-gradient(135deg, ' + t[1] + ' 0%, ' + t[2] + ' 55%, ' + t[0] + ' 100%)');
+  st.setProperty('--degrade-bouton', 'linear-gradient(135deg, ' + t[0] + ' 0%, ' + t[4] + ' 100%)');
+  var m = document.querySelector('meta[name=theme-color]'); if (m) m.content = t[1];
+}
+Object.keys(COULEURS).forEach(function (nom) {
+  var b = document.createElement('button'); b.className = 'puce' + (nom === couleur ? ' on' : '');
+  var p = document.createElement('i'); p.className = 'pastille'; p.style.background = COULEURS[nom][0]; b.appendChild(p);
+  b.appendChild(document.createTextNode(nom));
+  b.onclick = function () { couleur = nom; appliquerCouleur(nom); document.querySelectorAll('#couleurs .puce').forEach(function (x) { x.classList.toggle('on', x === b); }); };
+  $('couleurs').appendChild(b);
+});
 function $(id) { return document.getElementById(id); }
 
 METIERS.forEach(function (m) {
@@ -124,7 +156,7 @@ document.querySelectorAll('#mots .puce').forEach(function (b) {
 function refus(t) { $('erreurForm').textContent = '👉 ' + t; }
 function creer() {
   $('erreurForm').textContent = '';
-  var f = { nom: $('nom').value.trim(), metier: metier, mot: mot, pin: $('pin').value.trim(), email: $('email').value.trim(), site: $('site').value };
+  var f = { nom: $('nom').value.trim(), metier: metier, mot: mot, couleur: couleur, pin: $('pin').value.trim(), email: $('email').value.trim(), site: $('site').value };
   if (f.nom.length < 2) return refus('Indique le nom de ton activité.');
   if (!f.metier) return refus('Choisis ton métier.');
   if (!f.mot) return refus('Choisis ta clientèle.');
