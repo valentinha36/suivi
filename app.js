@@ -639,6 +639,14 @@ function majContact() {
   $('ficheRelance').classList.toggle('cache', !(c && absente(c)));
   if (c) $('ficheRelance').href = lienSms(tel, texteRelance(c.nom));
   $('ficheAvis').classList.toggle('cache', !P().avis);
+  // Carte de fidélité de la personne (lien personnel, sans code)
+  const lien = c && c.jeton && SALON ? location.origin + location.pathname.replace(/[^/]*$/, '') + 'carte.html?s=' + SALON + '&c=' + encodeURIComponent(c.cle) + '&j=' + c.jeton : '';
+  $('ficheCarte').classList.toggle('cache', !lien || GENERIQUES.includes(ficheCle));
+  $('ficheCarteVoir').classList.toggle('cache', !lien || GENERIQUES.includes(ficheCle));
+  if (lien) {
+    $('ficheCarte').href = lienSms(tel, 'Bonjour ' + c.nom + ', voici votre carte de fidélité ' + nomSalon() + ' : ' + lien + ' (elle se met à jour à chaque passage).');
+    $('ficheCarteVoir').href = lien;
+  }
   if (c) $('ficheAvis').href = lienSms(tel, texteAvis(c.nom));
 }
 

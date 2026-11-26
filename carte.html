@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Ma carte de fidélité</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3b2a4f">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --a1: #2d2140; --a2: #6b2f5e; --a3: #d6457a; --accent: #d6457a;
+    --texte: #17151c; --gris: #6e6a77; --fond: #f5f4f7; --carte: #fff; --trait: #e9e7ee; --vert: #138a5b; --vert-clair: #e6f5ee;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --texte: #f2f0f5; --gris: #a19cab; --fond: #111015; --carte: #1b1920; --trait: #302c38; --vert: #45c98f; --vert-clair: #143326; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--fond); color: var(--texte);
+    font-family: "Inter", -apple-system, "Segoe UI", Roboto, Arial, sans-serif; -webkit-font-smoothing: antialiased;
+    display: flex; justify-content: center; padding: calc(24px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+  }
+  main { width: 100%; max-width: 420px; }
+  .carte {
+    position: relative; overflow: hidden; border-radius: 26px; padding: 24px 22px 22px; color: #fff;
+    background: linear-gradient(135deg, var(--a1) 0%, var(--a2) 55%, var(--a3) 100%);
+    box-shadow: 0 18px 40px rgba(23, 21, 28, .28); aspect-ratio: 1.55; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .carte::after { content: ""; position: absolute; right: -60px; top: -60px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255, 255, 255, .08); }
+  .haut { display: flex; align-items: center; gap: 12px; position: relative; z-index: 1; }
+  .logo { width: 44px; height: 44px; border-radius: 13px; background: rgba(255, 255, 255, .18); display: flex; align-items: center; justify-content: center; font-size: 22px; overflow: hidden; flex: 0 0 auto; }
+  .logo img { width: 100%; height: 100%; object-fit: cover; background: #fff; }
+  .salon { font-size: 18px; font-weight: 800; letter-spacing: -.3px; line-height: 1.2; }
+  .type { font-size: 12px; font-weight: 600; opacity: .8; text-transform: uppercase; letter-spacing: .8px; margin-top: 2px; }
+  .prenom { font-size: 26px; font-weight: 800; letter-spacing: -.6px; position: relative; z-index: 1; }
+  .tampons { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); gap: 8px; position: relative; z-index: 1; max-width: 100%; }
+  .tampon {
+    aspect-ratio: 1; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .55); display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 800; max-width: 46px;
+  }
+  .tampon.plein { background: #fff; border-color: #fff; color: var(--accent); }
+  .tampon.cadeau { border-style: dashed; border-color: #aef0cf; font-size: 18px; }
+  .tampon.cadeau.pret { background: #aef0cf; border-style: solid; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { transform: scale(1.1); } }
+  .message { margin-top: 18px; padding: 16px; border-radius: 18px; background: var(--carte); border: 1px solid var(--trait); font-size: 16px; line-height: 1.45; text-align: center; }
+  .message b { font-size: 19px; display: block; margin-bottom: 4px; }
+  .message.offre { background: var(--vert-clair); border-color: transparent; color: var(--vert); }
+  .infos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .info { background: var(--carte); border: 1px solid var(--trait); border-radius: 16px; padding: 12px 14px; font-size: 12px; font-weight: 700; color: var(--gris); text-transform: uppercase; letter-spacing: .5px; }
+  .info b { display: block; font-size: 22px; color: var(--texte); margin-top: 4px; letter-spacing: -.4px; text-transform: none; }
+  .bas { text-align: center; color: var(--gris); font-size: 13px; margin-top: 18px; line-height: 1.5; }
+  .attente { text-align: center; color: var(--gris); padding: 80px 0; font-weight: 600; }
+  .attente::before { content: ""; display: block; width: 32px; height: 32px; margin: 0 auto 14px; border-radius: 50%; border: 3px solid var(--trait); border-top-color: var(--accent); animation: tourne .8s linear infinite; }
+  @keyframes tourne { to { transform: rotate(360deg); } }
+  .erreur { text-align: center; padding: 60px 10px; color: var(--gris); font-size: 16px; line-height: 1.5; }
+  .cache { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div id="attente" class="attente">Chargement de ta carte…</div>
+  <div id="erreur" class="erreur cache"></div>
+  <div id="contenu" class="cache">
+    <div class="carte" role="img" id="carte" aria-label="Carte de fidélité">
+      <div class="haut">
+        <div class="logo" id="logo"></div>
+        <div><div class="salon" id="salon"></div><div class="type">Carte de fidélité</div></div>
+      </div>
+      <div class="prenom" id="prenom"></div>
+      <div class="tampons" id="tampons"></div>
+    </div>
+    <div class="message" id="message"></div>
+    <div class="infos">
+      <div class="info">Passages<b id="passages">0</b></div>
+      <div class="info">Dernière visite<b id="derniere">–</b></div>
+    </div>
+    <p class="bas">Ta carte se met à jour toute seule à chaque passage.<br>Garde ce lien ou ajoute-le à ton écran d'accueil.</p>
+  </div>
+</main>
+<script>
+'use strict';
+var SERVEUR = 'https://script.google.com/macros/s/AKfycbxWejimyOL5FGpNqy3qYO6JLQZswiVAsl_CDho2ueERr3MP3WwFob3f8E_UDSnLzZQE/exec';
+// Couleurs des salons (mêmes que l'application)
+var THEMES = {
+  'Bleu nuit': ['#14284a', '#1e4f8a', '#3b82c4'], 'Vert sauge': ['#2f4a3c', '#4f7a62', '#6b9a7d'], 'Noir et or': ['#111111', '#2b2420', '#b08d57'],
+  'Terracotta': ['#5a2f22', '#9a4a30', '#c8643b'], 'Lavande': ['#3a2f5e', '#6a5aa8', '#8a74c9'],
+};
+function $(id) { return document.getElementById(id); }
+function erreur(t) { $('attente').classList.add('cache'); $('erreur').classList.remove('cache'); $('erreur').textContent = t; }
+
+var q = new URLSearchParams(location.search);
+var salon = q.get('s') || '', cle = q.get('c') || '', jeton = q.get('j') || '';
+var memo = 'carte_' + salon + '_' + cle;
+
+function afficher(d) {
+  var t = THEMES[d.couleur], st = document.documentElement.style;
+  if (t) { st.setProperty('--a1', t[0]); st.setProperty('--a2', t[1]); st.setProperty('--a3', t[2]); st.setProperty('--accent', t[2]); }
+  var m = document.querySelector('meta[name=theme-color]'); if (m && t) m.content = t[0];
+  document.title = 'Carte de fidélité – ' + d.salon;
+  $('salon').textContent = d.salon;
+  var lg = $('logo'); lg.textContent = '';
+  if (d.logo) { var img = document.createElement('img'); img.src = d.logo; img.alt = ''; img.onerror = function () { lg.textContent = d.icone; }; lg.appendChild(img); }
+  else lg.textContent = d.icone;
+  $('prenom').textContent = d.prenom ? 'Bonjour ' + d.prenom + ' !' : 'Bienvenue !';
+  $('passages').textContent = d.passages;
+  $('derniere').textContent = d.derniere ? d.derniere.slice(0, 5) + '/' + d.derniere.slice(8) : '–';
+  var red = '−' + String(Math.round(d.reduction * 100) / 100).replace('.', ',') + ' %';
+  var n = d.depuis % d.tous, z = $('tampons'); z.textContent = '';
+  z.style.setProperty('--n', Math.min(d.tous, 8));
+  var pret = d.active && n === d.tous - 1;
+  for (var i = 1; i <= d.tous; i++) {
+    var b = document.createElement('div');
+    b.className = 'tampon' + (i <= n ? ' plein' : '') + (i === d.tous ? ' cadeau' + (pret ? ' pret' : '') : '');
+    b.textContent = i === d.tous ? '🎁' : (i <= n ? '✓' : '');
+    z.appendChild(b);
+  }
+  $('carte').setAttribute('aria-label', 'Carte de fidélité : ' + n + ' tampon' + (n > 1 ? 's' : '') + ' sur ' + d.tous);
+  var msg = $('message');
+  if (!d.active) { msg.className = 'message'; msg.textContent = 'Le programme de fidélité est en pause pour le moment. Tes passages restent enregistrés.'; }
+  else if (pret) { msg.className = 'message offre'; msg.innerHTML = ''; var bb = document.createElement('b'); bb.textContent = '🎁 ' + red + ' à ton prochain passage !'; msg.appendChild(bb); msg.appendChild(document.createTextNode('Sur la prestation la plus chère. À très vite !')); }
+  else {
+    var reste = d.tous - n;
+    msg.className = 'message'; msg.innerHTML = '';
+    var b2 = document.createElement('b'); b2.textContent = 'Encore ' + reste + ' passage' + (reste > 1 ? 's' : '');
+    msg.appendChild(b2); msg.appendChild(document.createTextNode('avant ' + red + ' sur la prestation la plus chère.'));
+  }
+  $('attente').classList.add('cache'); $('contenu').classList.remove('cache');
+}
+
+if (!/^[\w-]{25,80}$/.test(salon) || !cle || !jeton) erreur('Ce lien est incomplet. Demande un nouveau lien à ton salon.');
+else {
+  try { var c = JSON.parse(localStorage.getItem(memo) || 'null'); if (c) afficher(c); } catch (e) { /* rien */ }
+  fetch(SERVEUR, { method: 'POST', credentials: 'omit', body: JSON.stringify({ action: 'carte', salon: salon, c: cle, j: jeton }) })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (!j.ok) throw new Error(j.erreur);
+      try { localStorage.setItem(memo, JSON.stringify(j.data)); } catch (e) { /* rien */ }
+      afficher(j.data);
+    })
+    .catch(function (e) { if ($('contenu').classList.contains('cache')) erreur(e && e.message && !/fetch/i.test(e.message) ? e.message : 'Pas de connexion internet. Réessaie dans un moment.'); });
+}
+</script>
+</body>
+</html>
