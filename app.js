@@ -230,7 +230,7 @@ function rafraichir() {
 }
 
 /* Écrans et onglet du bas correspondant (les sous-écrans allument leur onglet parent) */
-const ONGLET_DE = { accueil: 'accueil', agenda: 'agenda', nouvelle: 'nouvelle', clientes: 'clientes', fiche: 'clientes', bilan: 'bilan', plus: '', tarifs: '', offres: '', achats: '', recettes: 'bilan', stats: 'bilan' };
+const ONGLET_DE = { accueil: 'accueil', agenda: 'agenda', nouvelle: 'nouvelle', clientes: 'clientes', fiche: 'clientes', bilan: 'bilan', plus: '', reglages: '', tarifs: '', offres: '', achats: '', recettes: 'bilan', stats: 'bilan' };
 function vue(v) {
   vueActive = v;
   Object.keys(ONGLET_DE).forEach(x => $('v-' + x).classList.toggle('cache', x !== v));
@@ -240,6 +240,7 @@ function vue(v) {
   if (v === 'accueil') afficherAccueil();
   if (v === 'recettes') afficherRecettes();
   if (v === 'agenda') afficherAgenda();
+  if (v === 'reglages') afficherReglagesEcran();
   if (v === 'stats') afficherStats();
   window.scrollTo(0, 0);
 }
@@ -263,7 +264,7 @@ function afficherAccueil() {
   info.appendChild(l1);
   info.appendChild(el('div', 'ligne2', [D.reglages && D.reglages.metier, D.clientes.length + ' ' + M('cliente', 'client') + (D.clientes.length > 1 ? 's' : ''),
     D.journal.length + ' prestation' + (D.journal.length > 1 ? 's' : '') + ' enregistrée' + (D.journal.length > 1 ? 's' : '')].filter(Boolean).join(' · ')));
-  info.appendChild(el('div', 'ligne2', 'Tarifs, modules et couleurs se règlent dans l\'onglet Réglages du Google Sheet.'));
+  $('lienRecommander').href = lienSms('', 'Je te conseille cette application gratuite pour suivre tes clients (fidélité automatique, agenda, rappels SMS, bilan) : ' + location.origin + location.pathname.replace(/[^/]*$/, '') + 'inscription.html');
 }
 
 /** Plus → Verrouiller : oublie le code sur cet appareil. */
@@ -1565,6 +1566,112 @@ function encaisserRdv(r) {
   majResume();
   rdvEnCours = r.id;
   vue('nouvelle');
+}
+
+/* ======================= RÉGLAGES (écran Plus → Réglages) ======================= */
+const COULEURS_APERCU = { 'Prune et rose': '#d6457a', 'Bleu nuit': '#3b82c4', 'Vert sauge': '#6b9a7d', 'Noir et or': '#b08d57', 'Terracotta': '#c8643b', 'Lavande': '#8a74c9' };
+let regEdition = null;
+
+function afficherReglagesEcran() {
+  if (!D || !D.reglages) return;
+  const g = D.reglages, p = g.plus || {};
+  regEdition = { metier: g.metier, mot: g.mot, couleur: p.couleur || 'Prune et rose', modules: Object.assign({}, g.modules) };
+  const z = $('formReglages'); z.innerHTML = '';
+  const bloc = titre => { const b = el('div', 'carte'); b.appendChild(el('div', 'ligne1', titre)); z.appendChild(b); return b; };
+  const champ = (parent, id, label, valeur, attrs, aide) => {
+    const l = el('label', 'etiquette', label); l.htmlFor = id; parent.appendChild(l);
+    const i = el('input'); i.id = id; i.type = 'text'; i.value = valeur === null || valeur === undefined ? '' : valeur;
+    Object.assign(i, attrs || {}); parent.appendChild(i);
+    if (aide) parent.appendChild(el('div', 'ligne2', aide));
+    return i;
+  };
+  const puces = (parent, liste, actuel, quand) => {
+    const w = el('div', 'paiements'); w.style.marginTop = '8px';
+    liste.forEach(([val, txt, couleur]) => {
+      const b = el('button', 'puce' + (val === actuel ? ' on' : ''));
+      if (couleur) { const pt = el('i', 'pastille'); pt.style.background = couleur; b.appendChild(pt); }
+      b.appendChild(document.createTextNode(txt));
+      b.onclick = () => { w.querySelectorAll('.puce').forEach(x => x.classList.toggle('on', x === b)); quand(val); };
+      w.appendChild(b);
+    });
+    parent.appendChild(w);
+  };
+
+  // Mon activité
+  const b1 = bloc('Mon activité');
+  champ(b1, 'regNom', 'Nom affiché en haut', g.nomSalon, { maxLength: 60 });
+  const lm = el('label', 'etiquette', 'Métier'); lm.htmlFor = 'regMetier'; b1.appendChild(lm);
+  const sm = el('select'); sm.id = 'regMetier';
+  (g.metiers || []).forEach(m => sm.appendChild(new Option(m.icone + ' ' + m.nom, m.nom)));
+  sm.value = g.metier; sm.onchange = () => { regEdition.metier = sm.value; };
+  b1.appendChild(sm);
+  b1.appendChild(el('div', 'ligne2', 'Si tu changes de métier et que tu n\'as pas modifié tes tarifs, les tarifs de départ du nouveau métier sont chargés.'));
+  b1.appendChild(el('label', 'etiquette', 'Clientèle'));
+  puces(b1, [['Cliente', '👩 Surtout des femmes'], ['Client', '👨 Surtout des hommes'], ['Mixte', '👥 Mixte']], g.mot, v => { regEdition.mot = v; });
+
+  // Apparence
+  const b2 = bloc('Apparence');
+  b2.appendChild(el('label', 'etiquette', 'Couleur'));
+  puces(b2, (g.themes || Object.keys(COULEURS_APERCU)).map(t => [t, t, COULEURS_APERCU[t]]), regEdition.couleur, v => { regEdition.couleur = v; });
+  champ(b2, 'regLogo', 'Logo (lien d\'une image, facultatif)', p.logo, { placeholder: 'https://…', inputMode: 'url' },
+    'Lien d\'une image en ligne (Instagram, site, Google Drive partagé). Vide = l\'icône du métier.');
+
+  // Fonctions
+  const b3 = bloc('Fonctions de l\'application');
+  b3.appendChild(el('div', 'ligne2', 'Décoche ce dont tu ne te sers pas : l\'application devient plus simple.'));
+  (g.modulesListe || []).forEach(m => {
+    const l = el('label', 'interrupteur');
+    const t = el('span', 'interrupteur-texte'); t.appendChild(el('b', '', m.nom)); t.appendChild(el('small', '', m.aide));
+    const c = el('input'); c.type = 'checkbox'; c.checked = regEdition.modules[m.cle] !== false;
+    c.onchange = () => { regEdition.modules[m.cle] = c.checked; };
+    l.appendChild(t); l.appendChild(c); l.appendChild(el('span', 'interrupteur-glissiere'));
+    b3.appendChild(l);
+  });
+
+  // Clients et SMS
+  const b4 = bloc('Clients et SMS');
+  champ(b4, 'regAvis', 'Lien pour laisser un avis Google (facultatif)', p.avis, { placeholder: 'https://g.page/r/…', inputMode: 'url' },
+    'Google Maps → ta fiche → « Demander des avis » → copier le lien. Ajoute le bouton « Avis Google ».');
+  champ(b4, 'regRelance', 'Relancer après combien de jours sans visite', p.relance || 60, { type: 'number', inputMode: 'numeric', min: 1 });
+  champ(b4, 'regDeplacement', 'Frais de déplacement à domicile (€, facultatif)', p.deplacement, { type: 'number', inputMode: 'decimal', min: 0 },
+    'Ajoute un bouton « Déplacement » à la saisie. Vide = pas de bouton.');
+
+  // Chiffres
+  const b5 = bloc('Mes chiffres');
+  champ(b5, 'regObjectif', 'Objectif de chiffre d\'affaires par mois (€, facultatif)', p.objectif, { type: 'number', inputMode: 'decimal', min: 0 });
+  champ(b5, 'regSeuil', 'Plafond micro-entreprise (€ par an, facultatif)', p.seuil, { type: 'number', inputMode: 'decimal', min: 0 },
+    'Alerte quand tu approches du plafond. Vérifie le montant chaque année sur autoentrepreneur.urssaf.fr.');
+  champ(b5, 'regUrssaf', 'Taux de cotisations URSSAF (%, facultatif)', p.urssaf, { type: 'number', inputMode: 'decimal', min: 0, max: 100 },
+    'Pour estimer ce qu\'il faut mettre de côté. Ton taux est dans ton espace URSSAF.');
+
+  // Code
+  const b6 = bloc('Code d\'accès');
+  b6.appendChild(el('div', 'ligne2', 'Laisse vide pour garder ton code actuel.'));
+  champ(b6, 'regPin', 'Nouveau code (4 à 8 chiffres)', '', { type: 'password', inputMode: 'numeric', maxLength: 8, autocomplete: 'new-password' });
+  champ(b6, 'regPin2', 'Encore une fois', '', { type: 'password', inputMode: 'numeric', maxLength: 8, autocomplete: 'new-password' });
+}
+
+function sauverReglages() {
+  const v = id => $(id).value.trim();
+  const pin = v('regPin');
+  if (v('regNom').length < 2) return message('👉 Indique le nom affiché.');
+  if (pin && !/^\d{4,8}$/.test(pin)) return message('👉 Le code doit faire de 4 à 8 chiffres.');
+  if (pin && pin !== v('regPin2')) return message('👉 Les deux codes ne sont pas identiques.');
+  for (const id of ['regLogo', 'regAvis']) if (v(id) && !/^https:\/\/\S+$/.test(v(id))) return message('👉 Un lien doit commencer par https://');
+  const r = {
+    nom: v('regNom'), metier: regEdition.metier, mot: regEdition.mot, modules: regEdition.modules, pin,
+    plus: { couleur: regEdition.couleur, logo: v('regLogo'), avis: v('regAvis'), relance: v('regRelance'), deplacement: v('regDeplacement'),
+      objectif: v('regObjectif'), seuil: v('regSeuil'), urssaf: v('regUrssaf') },
+  };
+  const b = $('btnReglages'); b.disabled = true; b.textContent = 'Enregistrement…';
+  api('reglages', { r })
+    .then(j => {
+      if (pin) { PIN = pin; lsSet(CLE_PIN, pin); }
+      majTout(j.data.data); afficherEnTete(); afficherReglagesEcran();
+      message('✅ Réglages enregistrés.' + (j.data.tarifs === 'remplaces' ? ' Tarifs du nouveau métier chargés.' : j.data.tarifs === 'gardes' ? ' Tes tarifs personnalisés ont été gardés.' : '') + (pin ? ' Nouveau code actif.' : ''), 5000);
+    })
+    .catch(e => erreur(e.horsLigne ? 'Pas d\'internet : réessaie quand le réseau revient.' : e))
+    .finally(() => { b.disabled = false; b.textContent = 'Enregistrer les réglages'; });
 }
 
 /* ---------- Démarrage ---------- */
