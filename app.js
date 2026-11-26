@@ -552,7 +552,7 @@ function phraseFideliteApres(c, offerte) {
   return ' Fidélité : ' + n + '/' + P + ', encore ' + (P - n) + ' passage' + (P - n > 1 ? 's' : '') + ' avant ' + RED() + '.';
 }
 /** Prénom seul pour les SMS (« Julie Martin » → « Julie »). */
-const prenom = n => String(n || '').trim().split(/s+/)[0];
+const prenom = n => String(n || '').trim().split(' ')[0];
 const texteMerci = (c, offerte) => 'Merci ' + prenom(c.nom) + ' pour votre visite chez ' + nomSalon() + ' !' + phraseFideliteApres(c, offerte) + ' À bientôt 😊';
 const texteAvis = nom => 'Bonjour ' + prenom(nom) + ', merci pour votre visite chez ' + nomSalon() + ' ! Si vous avez une minute, votre avis nous aiderait beaucoup : ' + P().avis;
 const texteRelance = nom => 'Bonjour ' + prenom(nom) + ', cela fait un moment ! Au plaisir de vous revoir chez ' + nomSalon() + '. Répondez à ce message pour prendre rendez-vous 😊';
