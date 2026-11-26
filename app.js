@@ -172,9 +172,12 @@ function charger() {
 
 function afficherEnTete() {
   if (!D || !D.reglages || !D.reglages.nomSalon) return;
-  const t = $('titre'); t.textContent = '';
-  if (P().logo) { const img = el('img', 'logo'); img.src = P().logo; img.alt = ''; img.onerror = () => img.remove(); t.appendChild(img); }
-  t.appendChild(document.createTextNode((P().logo ? '' : icone() + ' ') + D.reglages.nomSalon));
+  // Logo (ou icône du métier) en grand à gauche, nom de l'activité bien visible
+  const l = $('logoEntete'); l.textContent = ''; l.classList.remove('cache');
+  const emoji = () => { l.textContent = icone(); l.classList.add('logo-emoji'); };
+  if (P().logo) { l.classList.remove('logo-emoji'); const img = el('img'); img.src = P().logo; img.alt = ''; img.onerror = () => { img.remove(); emoji(); }; l.appendChild(img); }
+  else emoji();
+  $('titre').textContent = D.reglages.nomSalon;
   document.title = D.reglages.nomSalon;
 }
 function enTeteDepuisCache() {
