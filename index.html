@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=18">
+<link rel="stylesheet" href="style.css?v=19">
 </head>
 <body>
 <header class="appbar">
@@ -288,6 +288,7 @@
       <div class="stat">Prestations<b id="anNb">0</b></div>
       <div class="stat">Panier moyen<b id="anPanier">0 €</b></div>
     </div>
+    <div class="stat stat-large">Taux horaire moyen<b id="anTaux">–</b><span class="stat-detail" id="anTauxDetail"></span></div>
     <div class="carte graphique">
       <div class="ligne1"><span>Encaissé par mois</span></div>
       <div class="legende" id="graphLegende"></div>
@@ -369,6 +370,8 @@
     <div id="stPrestations" class="carte"></div>
     <h2 class="titre-section"><span data-mot="Meilleures clientes|Meilleurs clients">Meilleures clientes</span></h2>
     <div id="stMeilleures"></div>
+    <h2 class="titre-section">Rapport par heure de travail</h2>
+    <div id="stRentabilite" class="carte"></div>
     <h2 class="titre-section">Nombre de visites par personne</h2>
     <div id="stFrequence" class="carte"></div>
     <h2 class="titre-section">Jours les plus chargés</h2>
@@ -388,6 +391,11 @@
       <button class="menu-ligne" onclick="vue('bilan')">
         <span class="menu-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 20V11M10 20V5M16 20v-7M21 20H3"></path></svg></span>
         <span class="menu-texte"><b>Bilan</b><small>Chiffre d'affaires, graphique, historique</small></span>
+        <span class="chevron">›</span>
+      </button>
+      <button class="menu-ligne" onclick="vue('import')">
+        <span class="menu-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"></path><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path></svg></span>
+        <span class="menu-texte"><b>Importer mes <span data-mot="clientes|clients">clientes</span></b><small>Depuis les contacts du téléphone ou un fichier</small></span>
         <span class="chevron">›</span>
       </button>
       <button class="menu-ligne" onclick="vue('tarifs')">
@@ -436,10 +444,26 @@
     <button class="gros" id="btnReglages" onclick="sauverReglages()">Enregistrer les réglages</button>
   </section>
 
+  <!-- ============ IMPORT DES CLIENTS ============ -->
+  <section id="v-import" class="cache">
+    <button class="lien retour" onclick="vue('plus')">← Plus</button>
+    <h1 class="titre-ecran">Importer mes <span data-mot="clientes|clients">clientes</span></h1>
+    <p class="discret" style="margin-top:-6px">Retrouve tes <span data-mot="clientes|clients">clientes</span> dans l'application sans tout retaper. Les noms déjà présents ne sont pas ajoutés en double.</p>
+    <div class="carte">
+      <button class="gros" id="btnContacts" onclick="importerDepuisContacts()">📱 Choisir dans les contacts du téléphone</button>
+      <p class="discret cache" id="contactsIndispo">Le choix direct dans les contacts n'est possible que sur Android (Chrome). Sur iPhone : utilise un fichier (ci-dessous).</p>
+      <button class="gros secondaire" onclick="$('fichierImport').click()">📄 Depuis un fichier (.vcf, .csv)</button>
+      <input type="file" id="fichierImport" class="cache" accept=".vcf,.csv,.txt,text/vcard,text/csv" onchange="importerDepuisFichier(this)">
+      <div class="ligne2" style="margin-top:12px">Fichiers acceptés : cartes de contact (.vcf, exportées depuis l'iPhone ou Google Contacts) ou tableau .csv (exporté d'Excel ou Google Sheets) avec une colonne Nom ou Prénom, et si possible Téléphone, Anniversaire, Notes.</div>
+    </div>
+    <div id="importApercu"></div>
+  </section>
+
   <!-- ============ TARIFS ============ -->
   <section id="v-tarifs" class="cache">
     <button class="lien retour" onclick="vue('plus')">← Plus</button>
     <h1 class="titre-ecran" id="titrePrestations">Prestations</h1>
+    <p class="discret" style="margin-top:-6px">Pour chaque prestation : nom, prix et durée en minutes (pour l'agenda et ton taux horaire).</p>
     <div class="carte"><div id="tarifsPrestations"></div>
       <button class="lien" onclick="ajouterLigneTarif(false)">+ Ajouter une prestation</button></div>
     <div class="m-options">
@@ -580,6 +604,6 @@
   </button>
 </nav>
 <div id="msg" class="msg" role="status"></div>
-<script src="app.js?v=30"></script>
+<script src="app.js?v=31"></script>
 </body>
 </html>

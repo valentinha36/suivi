@@ -119,6 +119,9 @@ async function envoyerAttente() {
   majBandeau();
 }
 
+/** Petit indicateur discret pendant la mise à jour depuis le Google Sheet. */
+function majBandeauSync(actif) { document.body.classList.toggle('synchro', !!actif); }
+
 function majBandeau() {
   const n = fileAttente().length, b = $('bandeau');
   if (!n && !horsLigne) { b.classList.add('cache'); return; }
@@ -209,14 +212,27 @@ function charger() {
   }
   if (RESET && SALON && !resetTraite) return afficherResetEmail();
   if (!PIN) return demanderPin();
+  // Ouverture instantanée : on affiche tout de suite les données gardées sur le téléphone,
+  // puis on les remplace par celles du Google Sheet dès qu'elles arrivent.
+  let dejaAffiche = false;
+  const memo = lsGet(CLE_DONNEES);
+  if (memo && !initFait) {
+    try { D = JSON.parse(memo); $('chargement').classList.add('cache'); init(); dejaAffiche = true; majBandeauSync(true); } catch (e) { D = null; }
+  }
   api('donnees').then(j => {
     lsSet(CLE_PIN, PIN);
-    horsLigne = false;
-    D = j.data; lsSet(CLE_DONNEES, JSON.stringify(D));
-    $('chargement').classList.add('cache'); init(); envoyerAttente();
+    horsLigne = false; majBandeauSync(false);
+    if (dejaAffiche) majTout(j.data);
+    else { D = j.data; lsSet(CLE_DONNEES, JSON.stringify(D)); $('chargement').classList.add('cache'); init(); }
+    envoyerAttente();
   }).catch(e => {
-    if (e.message === 'PIN') { lsDel(CLE_PIN); PIN = ''; return demanderPin('❌ Code incorrect, réessaie.'); }
-    if (/essais/.test(e.message)) return demanderPin('⛔ ' + e.message);
+    majBandeauSync(false);
+    if (e.message === 'PIN' || /essais/.test(e.message)) {
+      if (dejaAffiche) { Object.keys(ONGLET_DE).forEach(x => $('v-' + x).classList.add('cache')); D = null; initFait = false; }
+      if (e.message === 'PIN') { lsDel(CLE_PIN); PIN = ''; return demanderPin('❌ Code incorrect, réessaie.'); }
+      return demanderPin('⛔ ' + e.message);
+    }
+    if (dejaAffiche) { if (e.horsLigne) { horsLigne = true; majBandeau(); } else erreur(e); return; }
     const cache = lsGet(CLE_DONNEES);
     if (e.horsLigne && cache) {
       horsLigne = true; D = JSON.parse(cache);
@@ -290,7 +306,7 @@ function rafraichir() {
 }
 
 /* Écrans et onglet du bas correspondant (les sous-écrans allument leur onglet parent) */
-const ONGLET_DE = { accueil: 'accueil', agenda: 'agenda', nouvelle: 'nouvelle', clientes: 'clientes', fiche: 'clientes', bilan: 'bilan', plus: '', reglages: '', tarifs: '', offres: '', achats: '', recettes: 'bilan', stats: 'bilan' };
+const ONGLET_DE = { accueil: 'accueil', agenda: 'agenda', nouvelle: 'nouvelle', clientes: 'clientes', fiche: 'clientes', bilan: 'bilan', plus: '', reglages: '', import: '', tarifs: '', offres: '', achats: '', recettes: 'bilan', stats: 'bilan' };
 function vue(v) {
   vueActive = v;
   Object.keys(ONGLET_DE).forEach(x => $('v-' + x).classList.toggle('cache', x !== v));
@@ -301,6 +317,7 @@ function vue(v) {
   if (v === 'recettes') afficherRecettes();
   if (v === 'agenda') afficherAgenda();
   if (v === 'reglages') afficherReglagesEcran();
+  if (v === 'import') { $('importApercu').innerHTML = ''; const ok = 'contacts' in navigator && 'ContactsManager' in window; $('btnContacts').classList.toggle('cache', !ok); $('contactsIndispo').classList.toggle('cache', ok); }
   if (v === 'stats') afficherStats();
   window.scrollTo(0, 0);
 }
@@ -739,6 +756,7 @@ function ouvrirFiche(cle, rafraichissement) {
   const lignes = D.journal.filter(r => r.cle === cle).reverse();
   if (!lignes.length) h.appendChild(el('p', 'discret', 'Aucune prestation enregistrée.'));
   lignes.forEach(r => h.appendChild(carteSaisie(r, false)));
+  if (c.total > lignes.length) boutonAnneesPrecedentes(h, () => ouvrirFiche(cle, true));
   if (!rafraichissement) vue('fiche');
 }
 
@@ -908,17 +926,22 @@ function dessinerTarifs() {
       const ligne = el('div', 'ligne-tarif');
       const nom = el('input'); nom.type = 'text'; nom.value = t.nom; nom.placeholder = 'Nom';
       nom.oninput = () => { t.nom = nom.value; };
-      const prix = el('input'); prix.type = 'number'; prix.inputMode = 'decimal'; prix.value = t.prix; prix.className = 'prix-tarif';
-      prix.oninput = () => { t.prix = nombre(prix.value) || 0; };
+      const prix = el('input'); prix.type = 'number'; prix.inputMode = 'decimal'; prix.value = t.prix; prix.className = 'prix-tarif'; prix.setAttribute('aria-label', 'Prix');
+      const duree = el('input'); duree.type = 'number'; duree.inputMode = 'numeric'; duree.value = t.duree || ''; duree.className = 'duree-tarif';
+      duree.placeholder = 'min'; duree.setAttribute('aria-label', 'Durée en minutes');
+      const taux = el('div', 'taux-tarif');
+      const majTaux = () => { taux.textContent = t.duree > 0 && t.prix > 0 ? '≈ ' + euros(t.prix / t.duree * 60) + ' de l\'heure' : (opt ? '' : 'Ajoute la durée pour voir le taux horaire'); };
+      prix.oninput = () => { t.prix = nombre(prix.value) || 0; majTaux(); };
+      duree.oninput = () => { t.duree = parseInt(duree.value, 10) || 0; majTaux(); };
       const sup = el('button', 'supprimer', '✕'); sup.title = 'Retirer';
       sup.onclick = () => { tarifsEdition.splice(i, 1); dessinerTarifs(); };
-      ligne.appendChild(nom); ligne.appendChild(prix); ligne.appendChild(el('span', 'euro', '€')); ligne.appendChild(sup);
-      z.appendChild(ligne);
+      ligne.appendChild(nom); ligne.appendChild(prix); ligne.appendChild(el('span', 'euro', '€')); ligne.appendChild(duree); ligne.appendChild(sup);
+      z.appendChild(ligne); z.appendChild(taux); majTaux();
     });
   });
 }
 function ajouterLigneTarif(option) {
-  tarifsEdition.push({ nom: '', prix: 0, option });
+  tarifsEdition.push({ nom: '', prix: 0, option, duree: 0 });
   dessinerTarifs();
   const zone = $(option ? 'tarifsOptions' : 'tarifsPrestations');
   const champs = zone.querySelectorAll('input[type=text]');
@@ -1202,8 +1225,32 @@ function afficherBilan() {
   const payees = lignesAn.filter(r => typeof r.caApres === 'number');
   $('anNb').textContent = lignesAn.length;
   $('anPanier').textContent = payees.length ? euros(payees.reduce((s, r) => s + r.caApres, 0) / payees.length) : '–';
+  const th = tauxHoraire(lignesAn);
+  $('anTaux').textContent = th.nb ? euros(th.taux) + ' / h' : '–';
+  $('anTauxDetail').textContent = th.nb
+    ? 'Calculé sur ' + th.nb + ' prestation' + (th.nb > 1 ? 's' : '') + ' (' + String(Math.round(th.heures * 10) / 10).replace('.', ',') + ' h de travail), d\'après les durées de tes tarifs.'
+    : 'Ajoute la durée de tes prestations (Plus → Tarifs) pour connaître ton vrai taux horaire.';
   graphiqueMois();
   afficherHistorique();
+}
+
+/* ======================= DURÉE ET TAUX HORAIRE ======================= */
+/** Durée totale (min) d'une saisie « A + B » d'après les tarifs ; 0 si une durée manque. */
+function dureeDe(prestation) {
+  const parNom = {}; (D.tarifs || []).forEach(t => { parNom[t.nom] = t.duree || 0; });
+  let total = 0;
+  for (const n of String(prestation || '').split(' + ').map(x => x.trim()).filter(Boolean)) {
+    if (n === 'Déplacement') continue;
+    if (!parNom[n]) return 0;
+    total += parNom[n];
+  }
+  return total;
+}
+/** Taux horaire moyen sur une liste de saisies (seulement celles dont la durée est connue). */
+function tauxHoraire(lignes) {
+  let ca = 0, min = 0, nb = 0;
+  lignes.forEach(r => { const d = dureeDe(r.prestation); if (d && typeof r.caApres === 'number') { ca += r.caApres; min += d; nb++; } });
+  return { taux: min ? ca / min * 60 : 0, heures: min / 60, nb };
 }
 
 /* ======================= CHIFFRES CALCULÉS DEPUIS L'HISTORIQUE ======================= */
@@ -1294,6 +1341,29 @@ function graphiqueMois() {
     : 'Touche un mois pour voir son détail. La comparaison avec l\'année précédente apparaîtra quand il y aura des saisies sur deux années.';
 }
 
+/* ======================= JOURNAL COMPLET (années anciennes, à la demande) ======================= */
+let chargementJournal = null;
+/** Charge toutes les années (une seule fois) puis rappelle « ensuite ». */
+function chargerJournalComplet(ensuite) {
+  if (!D || !D.journalPartiel) { if (ensuite) ensuite(); return Promise.resolve(); }
+  if (!chargementJournal) {
+    message('⏳ Chargement des années précédentes…', 8000);
+    chargementJournal = api('journal_complet')
+      .then(j => { D.journal = j.data.journal; D.journalPartiel = false; D.journalCompletCharge = true; $('msg').style.display = 'none'; })
+      .catch(e => erreur(e.horsLigne ? 'Pas d\'internet : les années précédentes ne sont pas disponibles.' : e))
+      .finally(() => { chargementJournal = null; });
+  }
+  return chargementJournal.then(() => { if (ensuite) ensuite(); });
+}
+const anneeDebutJournal = () => D && D.journalDepuisIso ? Number(D.journalDepuisIso.slice(0, 4)) : 0;
+/** Bouton « Voir aussi avant 2025 » quand des années anciennes ne sont pas chargées. */
+function boutonAnneesPrecedentes(zone, ensuite) {
+  if (!D.journalPartiel) return;
+  const b = el('button', 'lien', '📂 Voir aussi avant ' + anneeDebutJournal());
+  b.onclick = () => chargerJournalComplet(ensuite);
+  zone.appendChild(b);
+}
+
 /* ======================= HISTORIQUE (recherche) ======================= */
 function afficherHistorique() {
   const q = norm($('rechercheHisto').value);
@@ -1314,6 +1384,7 @@ function afficherHistorique() {
       : 'Aucune saisie ne correspond.';
   }
   liste.slice(0, 60).forEach(r => box.appendChild(carteSaisie(r, true)));
+  if (q) boutonAnneesPrecedentes(box, afficherHistorique);
 }
 
 /* ======================= LIVRE DES RECETTES ======================= */
@@ -1327,12 +1398,13 @@ function lignesRecettes() {
 const periodeRecettes = () => ($('recMois').value === '' ? 'année ' : MOIS[Number($('recMois').value)].toLowerCase() + ' ') + $('recAnnee').value;
 function afficherRecettes() {
   const sa = $('recAnnee'), sm = $('recMois');
-  const annees = Array.from(new Set(D.journal.map(anneeDe).concat([D.annee]))).sort((a, b) => b - a);
+  const annees = Array.from(new Set(D.journal.map(anneeDe).concat(D.annees || [], [D.annee]))).sort((a, b) => b - a);
   const anAvant = sa.value, moisAvant = sm.value;
   sa.innerHTML = ''; annees.forEach(a => sa.appendChild(new Option(a, a)));
   sa.value = anAvant && annees.includes(Number(anAvant)) ? anAvant : String(D.annee);
   if (!sm.options.length) { sm.appendChild(new Option('Toute l\'année', '')); MOIS.forEach((n, i) => sm.appendChild(new Option(n, i))); }
   sm.value = moisAvant;
+  if (D.journalPartiel && Number(sa.value) < anneeDebutJournal()) { $('tableRecettes').innerHTML = ''; return chargerJournalComplet(afficherRecettes); }
   const lignes = lignesRecettes();
   const total = lignes.reduce((s, r) => s + montant(r), 0);
   $('recTotal').textContent = euros(total); $('recNb').textContent = lignes.length;
@@ -1377,6 +1449,7 @@ const JOURS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'S
 const jourMs = iso => new Date(iso + 'T12:00:00').getTime();
 function afficherStats() {
   if (!D) return;
+  if (periodeStats === 'tout' && D.journalPartiel) return chargerJournalComplet(afficherStats);
   const auj = jourMs(D.aujourdHuiIso);
   const dansPeriode = r => periodeStats === 'tout' ? true
     : periodeStats === 'annee' ? anneeDe(r) === D.annee
@@ -1433,6 +1506,13 @@ function afficherStats() {
     if (c) k.onclick = () => ouvrirFiche(c.cle);
     z.appendChild(k);
   });
+
+  // Rapport par heure : chaque prestation du tarif (prix ÷ durée)
+  const rent = {};
+  (D.tarifs || []).filter(t => !t.option && t.duree > 0 && t.prix > 0).forEach(t => { rent[t.nom] = Math.round(t.prix / t.duree * 60); });
+  const zr = $('stRentabilite');
+  barres(zr, rent, () => '', 'Ajoute la durée de tes prestations (Plus → Tarifs) pour voir lesquelles rapportent le plus par heure.', v => v + ' €/h');
+  if (Object.keys(rent).length) zr.querySelectorAll('.cat .ligne1 span:last-child').forEach(x => { x.textContent = x.textContent.replace(/ · \d+ %$/, ''); });
 
   // Nombre de visites par personne
   const tranches = { '1 visite': 0, '2 à 4 visites': 0, '5 à 9 visites': 0, '10 visites et plus': 0 };
@@ -1604,6 +1684,8 @@ function ouvrirRdv(r) {
       if (i >= 0) rdvChoisis.splice(i, 1); else rdvChoisis.push(t.nom);
       b.classList.toggle('on', i < 0);
       $('rdvPrestation').value = rdvChoisis.join(' + ');
+      const d = dureeDe(rdvChoisis.join(' + '));
+      if (d) { const sd = $('rdvDuree'); if (!Array.from(sd.options).some(o => Number(o.value) === d)) sd.appendChild(new Option(dureeTexte(d), d)); sd.value = d; }
     };
     z.appendChild(b);
   });
@@ -1814,6 +1896,112 @@ function sauverReglages() {
     })
     .catch(e => erreur(e.horsLigne ? 'Pas d\'internet : réessaie quand le réseau revient.' : e))
     .finally(() => { b.disabled = false; b.textContent = 'Enregistrer les réglages'; });
+}
+
+/* ======================= IMPORT DES CLIENTS ======================= */
+let importListe = [];
+
+/** Anniversaire « 1990-04-09 », « --04-09 », « 09/04/1990 »… → « 09/04 ». */
+function annivCourt(v) {
+  const t = String(v || '').trim();
+  let m = t.match(/(\d{4}|-)-?(\d{2})-?(\d{2})$/) || t.match(/^-?-?(\d{2})(\d{2})$/);
+  if (m && m.length === 4) return m[3] + '/' + m[2];
+  m = t.match(/^(\d{1,2})[\/.-](\d{1,2})/);
+  return m ? pad(+m[1]) + '/' + pad(+m[2]) : '';
+}
+
+/** Cartes de contact (.vcf). */
+function lireVcf(texte) {
+  const deplie = texte.replace(/\r?\n[ \t]/g, ''); // lignes repliées
+  return deplie.split(/BEGIN:VCARD/i).slice(1).map(bloc => {
+    const champ = cle => { const m = bloc.match(new RegExp('^' + cle + '(?:;[^:\\n]*)?:(.*)$', 'im')); return m ? m[1].trim() : ''; };
+    const dec = v => v.replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\n/gi, ' ');
+    let nom = dec(champ('FN'));
+    const n = champ('N').split(';').map(dec);
+    if (!nom) nom = [n[1], n[0]].filter(Boolean).join(' ');
+    return { nom, nomFamille: n[0] || '', tel: champ('TEL'), anniversaire: annivCourt(champ('BDAY')), notes: dec(champ('NOTE')) };
+  }).filter(c => c.nom);
+}
+
+/** Tableau .csv (séparateur ; ou ,) avec une ligne d'en-têtes. */
+function lireCsv(texte) {
+  const lignes = texte.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim());
+  if (lignes.length < 2) return [];
+  const sep = (lignes[0].match(/;/g) || []).length >= (lignes[0].match(/,/g) || []).length ? ';' : ',';
+  const decoupe = l => { const r = []; let cur = '', q = false; for (let i = 0; i < l.length; i++) { const ch = l[i];
+    if (ch === '"') { if (q && l[i + 1] === '"') { cur += '"'; i++; } else q = !q; } else if (ch === sep && !q) { r.push(cur); cur = ''; } else cur += ch; }
+    r.push(cur); return r.map(x => x.trim()); };
+  const tetes = decoupe(lignes[0]).map(x => norm(x));
+  const col = (...noms) => tetes.findIndex(t => noms.some(n => t === n || t.indexOf(n) === 0));
+  const iNomComplet = col('nom complet', 'name', 'full name', 'display name');
+  const iPrenom = col('prenom', 'first name', 'given name');
+  const iNom = col('nom de famille', 'nom', 'last name', 'family name');
+  const iTel = col('telephone', 'tel', 'portable', 'mobile', 'phone 1 - value', 'phone', 'numero');
+  const iAnniv = col('anniversaire', 'date de naissance', 'birthday', 'naissance');
+  const iNotes = col('notes', 'note', 'remarques', 'commentaire');
+  return lignes.slice(1).map(l => {
+    const v = decoupe(l), g = i => (i >= 0 ? v[i] || '' : '');
+    const nom = g(iNomComplet) || [g(iPrenom), iNom !== iNomComplet ? g(iNom) : ''].filter(Boolean).join(' ');
+    return { nom, nomFamille: iPrenom >= 0 ? g(iNom) : '', tel: g(iTel), anniversaire: annivCourt(g(iAnniv)), notes: g(iNotes) };
+  }).filter(c => c.nom);
+}
+
+function importerDepuisFichier(input) {
+  const f = input.files && input.files[0]; input.value = '';
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    const t = String(r.result || '');
+    const liste = /BEGIN:VCARD/i.test(t) ? lireVcf(t) : lireCsv(t);
+    if (!liste.length) return message('👉 Aucun contact trouvé dans ce fichier (il faut une colonne Nom ou Prénom).', 6000);
+    apercuImport(liste);
+  };
+  r.onerror = () => erreur('Fichier illisible.');
+  r.readAsText(f);
+}
+
+async function importerDepuisContacts() {
+  try {
+    const choix = await navigator.contacts.select(['name', 'tel'], { multiple: true });
+    const liste = choix.map(x => ({ nom: (x.name && x.name[0]) || '', tel: (x.tel && x.tel[0]) || '' })).filter(c => c.nom);
+    if (liste.length) apercuImport(liste);
+  } catch (e) { erreur('Contacts non disponibles sur ce téléphone : utilise un fichier.'); }
+}
+
+function apercuImport(liste) {
+  const connus = new Set(D.clientes.map(c => c.cle));
+  const vus = new Set();
+  importListe = liste.filter(c => { const k = norm(c.nom); if (!k || connus.has(k) || vus.has(k)) return false; vus.add(k); return true; });
+  const doublons = liste.length - importListe.length;
+  const z = $('importApercu'); z.innerHTML = '';
+  const k = el('div', 'carte');
+  k.appendChild(el('div', 'ligne1', importListe.length + ' ' + M('cliente', 'client') + (importListe.length > 1 ? 's' : '') + ' à ajouter'));
+  if (doublons) k.appendChild(el('div', 'ligne2', doublons + ' déjà présent' + (doublons > 1 ? 's' : '') + ' ou en double : ignoré' + (doublons > 1 ? 's' : '') + '.'));
+  const ul = el('div', 'liens-clientes');
+  importListe.slice(0, 30).forEach(c => ul.appendChild(el('span', 'puce', c.nom + (c.tel ? ' 📞' : ''))));
+  if (importListe.length > 30) ul.appendChild(el('span', 'discret', '… et ' + (importListe.length - 30) + ' autres'));
+  k.appendChild(ul);
+  if (importListe.length) {
+    const b = el('button', 'gros', 'Importer ' + importListe.length + ' ' + M('cliente', 'client') + (importListe.length > 1 ? 's' : ''));
+    b.id = 'btnImporter'; b.onclick = validerImport;
+    k.appendChild(b);
+  }
+  z.appendChild(k);
+  z.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function validerImport() {
+  if (!importListe.length) return;
+  const b = $('btnImporter'); b.disabled = true; b.textContent = 'Import en cours…';
+  api('importer_clients', { liste: importListe })
+    .then(j => {
+      majTout(j.data.data);
+      $('importApercu').innerHTML = '';
+      message('✅ ' + j.data.ajoutes + ' ' + M('cliente', 'client') + (j.data.ajoutes > 1 ? 's' : '') + ' importé' + M('e', '') + (j.data.ajoutes > 1 ? 's' : '') + '.', 5000);
+      importListe = [];
+      vue('clientes');
+    })
+    .catch(e => { erreur(e.horsLigne ? 'Pas d\'internet : réessaie quand le réseau revient.' : e); b.disabled = false; b.textContent = 'Réessayer'; });
 }
 
 /* ---------- Démarrage ---------- */

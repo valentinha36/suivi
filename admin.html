@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Tableau de bord – salons</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#17151c">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=19">
+<style>
+  body { padding-bottom: 40px; }
+  .chiffres { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+  @media (min-width: 640px) { .chiffres { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .etat { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .etat.actif { background: var(--vert-clair); color: var(--vert); }
+  .etat.calme { background: var(--alerte-fond); color: var(--alerte-texte); }
+  .etat.endormi { background: var(--danger-clair); color: var(--rouge); }
+  .etat.jamais { background: var(--fond); color: var(--gris); }
+  .salon .ligne2 a { color: var(--rose); font-weight: 600; text-decoration: none; }
+  .mini { display: flex; align-items: flex-end; gap: 3px; height: 28px; margin-top: 10px; }
+  .mini i { flex: 1; background: var(--rose); border-radius: 3px 3px 0 0; min-height: 2px; opacity: .85; }
+  .mini i.vide { background: var(--trait); }
+  .legende-mini { display: flex; justify-content: space-between; font-size: 11px; color: var(--gris); margin-top: 3px; }
+</style>
+</head>
+<body>
+<header class="appbar">
+  <div class="logo-entete logo-emoji" aria-hidden="true">📊</div>
+  <div class="appbar-texte">
+    <div class="titre">Tableau de bord</div>
+    <div class="sous" id="sous">Salons et activité</div>
+  </div>
+</header>
+<main>
+  <section id="connexion" class="cache ecran-pin">
+    <h1 class="titre-ecran" style="text-align:center">Accès prestataire</h1>
+    <p class="discret" style="text-align:center">Clé créée avec « creerCleAdmin » dans le serveur central.</p>
+    <input type="password" id="cle" autocomplete="off" aria-label="Clé" onkeydown="if(event.key==='Enter')entrer()">
+    <p id="erreur" class="pin-msg"></p>
+    <button class="gros" onclick="entrer()">Entrer</button>
+  </section>
+  <div id="chargement" class="chargement cache">Chargement…</div>
+  <section id="tableau" class="cache">
+    <div class="chiffres">
+      <div class="stat vedette">Salons<b id="nbSalons">0</b></div>
+      <div class="stat">Actifs (7 jours)<b id="nbActifs">0</b></div>
+      <div class="stat">Saisies ce mois<b id="nbMois">0</b></div>
+      <div class="stat">Jamais utilisés<b id="nbJamais">0</b></div>
+    </div>
+    <div class="filtres" id="filtres">
+      <button class="puce on" data-f="tous">Tous</button>
+      <button class="puce" data-f="actif">Actifs</button>
+      <button class="puce" data-f="calme">Calmes</button>
+      <button class="puce" data-f="endormi">À relancer</button>
+      <button class="puce" data-f="jamais">Jamais utilisés</button>
+    </div>
+    <div id="liste" style="margin-top:12px"></div>
+    <p class="discret">Actif : saisie dans les 7 derniers jours · Calme : 8 à 30 jours · À relancer : plus de 30 jours · Jamais utilisé : aucune saisie.
+      L'activité est enregistrée depuis le 27/11/2026.</p>
+    <button class="lien" onclick="sortir()">Se déconnecter</button>
+  </section>
+</main>
+<div id="msg" class="msg" role="status"></div>
+<script>
+'use strict';
+var SERVEUR = 'https://script.google.com/macros/s/AKfycbxWejimyOL5FGpNqy3qYO6JLQZswiVAsl_CDho2ueERr3MP3WwFob3f8E_UDSnLzZQE/exec';
+var donnees = null, filtre = 'tous';
+function $(id) { return document.getElementById(id); }
+function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; }
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* rien */ } }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { /* rien */ } }
+var jours = function (iso) { return iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 864e5) : null; };
+var depuis = function (iso) { var j = jours(iso); return j === null ? 'jamais' : j === 0 ? 'aujourd\'hui' : j === 1 ? 'hier' : 'il y a ' + j + ' jours'; };
+var dateFr = function (iso) { return iso ? new Date(iso).toLocaleDateString('fr-FR') : ''; };
+
+function etat(s) {
+  var j = jours(s.saisie);
+  if (j === null) return 'jamais';
+  return j <= 7 ? 'actif' : j <= 30 ? 'calme' : 'endormi';
+}
+var LIBELLES = { actif: '● Actif', calme: '● Calme', endormi: '● À relancer', jamais: '○ Jamais utilisé' };
+
+function entrer() {
+  var cle = $('cle').value.trim() || lsGet('cle_admin_suivi') || '';
+  if (!cle) return montrerConnexion();
+  $('connexion').classList.add('cache'); $('chargement').classList.remove('cache');
+  fetch(SERVEUR, { method: 'POST', credentials: 'omit', body: JSON.stringify({ action: 'admin', cle: cle }) })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (!j.ok) throw new Error(j.erreur);
+      lsSet('cle_admin_suivi', cle); donnees = j.data; afficher();
+    })
+    .catch(function (e) { lsDel('cle_admin_suivi'); montrerConnexion(e && e.message && !/fetch/i.test(e.message) ? e.message : 'Pas de connexion internet.'); });
+}
+function montrerConnexion(msg) {
+  $('chargement').classList.add('cache'); $('tableau').classList.add('cache'); $('connexion').classList.remove('cache');
+  $('erreur').textContent = msg || ''; $('cle').value = ''; $('cle').focus();
+}
+function sortir() { lsDel('cle_admin_suivi'); montrerConnexion(); }
+
+function afficher() {
+  var salons = donnees.salons.slice();
+  var moisCourant = new Date().toISOString().slice(0, 7);
+  salons.forEach(function (s) { s.etat = etat(s); s.nbMois = (s.mois || {})[moisCourant] || 0; });
+  salons.sort(function (a, b) { return (b.saisie || b.vu || b.inscrit || '').localeCompare(a.saisie || a.vu || a.inscrit || ''); });
+  $('nbSalons').textContent = salons.length;
+  $('nbActifs').textContent = salons.filter(function (s) { return s.etat === 'actif'; }).length;
+  $('nbMois').textContent = salons.reduce(function (t, s) { return t + s.nbMois; }, 0);
+  $('nbJamais').textContent = salons.filter(function (s) { return s.etat === 'jamais'; }).length;
+  $('sous').textContent = 'Mis à jour ' + new Date(donnees.maintenant).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  var z = $('liste'); z.innerHTML = '';
+  var liste = salons.filter(function (s) { return filtre === 'tous' || s.etat === filtre; });
+  if (!liste.length) z.appendChild(el('p', 'discret', 'Aucun salon ici.'));
+  liste.forEach(function (s) {
+    var k = el('div', 'carte salon');
+    var l1 = el('div', 'ligne1'); l1.appendChild(el('span', '', s.nom)); l1.appendChild(el('span', 'etat ' + s.etat, LIBELLES[s.etat]));
+    k.appendChild(l1);
+    k.appendChild(el('div', 'ligne2', [s.metier, s.inscrit ? 'inscrit le ' + dateFr(s.inscrit) : 'installé à la main'].filter(Boolean).join(' · ')));
+    k.appendChild(el('div', 'ligne2', 'Dernière saisie : ' + depuis(s.saisie) + ' · dernière ouverture : ' + depuis(s.vu) + ' · ' + s.nbMois + ' saisie' + (s.nbMois > 1 ? 's' : '') + ' ce mois'));
+    // Saisies des 6 derniers mois
+    var mini = el('div', 'mini'), mois = [], max = 1;
+    for (var i = 5; i >= 0; i--) { var d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); var cle = d.toISOString().slice(0, 7); var n = (s.mois || {})[cle] || 0; mois.push([cle, n]); max = Math.max(max, n); }
+    mois.forEach(function (m) { var b = el('i', m[1] ? '' : 'vide'); b.style.height = Math.max(8, m[1] / max * 100) + '%'; b.title = m[0] + ' : ' + m[1] + ' saisie(s)'; mini.appendChild(b); });
+    k.appendChild(mini);
+    var lg = el('div', 'legende-mini'); lg.appendChild(el('span', '', 'il y a 6 mois')); lg.appendChild(el('span', '', 'ce mois')); k.appendChild(lg);
+    var l3 = el('div', 'ligne2');
+    if (s.email) { var a = el('a', '', '✉️ ' + s.email); a.href = 'mailto:' + s.email; l3.appendChild(a); l3.appendChild(document.createTextNode('  ')); }
+    // (pas de lien direct : l'ouvrir ici remplacerait ton propre salon sur cet appareil)
+    var o = el('a', '', '🔗 Copier son lien'); o.href = '#'; o.onclick = function (ev) { ev.preventDefault(); if (navigator.clipboard) navigator.clipboard.writeText(s.lien).then(function () { var m = $('msg'); m.textContent = '✅ Lien copié'; m.style.display = 'block'; setTimeout(function () { m.style.display = 'none'; }, 2000); }); }; l3.appendChild(o);
+    k.appendChild(l3);
+    z.appendChild(k);
+  });
+  $('chargement').classList.add('cache'); $('connexion').classList.add('cache'); $('tableau').classList.remove('cache');
+}
+document.querySelectorAll('#filtres .puce').forEach(function (b) {
+  b.onclick = function () { filtre = b.dataset.f; document.querySelectorAll('#filtres .puce').forEach(function (x) { x.classList.toggle('on', x === b); }); afficher(); };
+});
+if (lsGet('cle_admin_suivi')) entrer(); else montrerConnexion();
+</script>
+</body>
+</html>
