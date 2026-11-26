@@ -239,7 +239,7 @@ function vue(v) {
   Object.keys(ONGLET_DE).forEach(x => $('v-' + x).classList.toggle('cache', x !== v));
   ['accueil', 'agenda', 'clientes', 'nouvelle', 'bilan'].forEach(x => $('t-' + x).classList.toggle('actif', ONGLET_DE[v] === x));
   document.body.classList.toggle('en-saisie', v === 'nouvelle' && !$('formulaire').classList.contains('cache'));
-  if (v === 'tarifs') afficherTarifs();
+  if (v === 'tarifs') { afficherTarifs(); lsSet(cleBienvenue('tarifs'), '1'); }
   if (v === 'accueil') afficherAccueil();
   if (v === 'recettes') afficherRecettes();
   if (v === 'agenda') afficherAgenda();
@@ -255,8 +255,36 @@ function ouvrirSaisie() {
 }
 
 /** Accueil : prestations du jour + carte du salon (écran Plus). */
+/* Carte « Bienvenue » : 3 premiers pas pour une nouvelle inscrite, puis elle disparaît */
+const cleBienvenue = k => 'bienvenue_' + k + '_' + (SALON || 'api');
+function afficherBienvenue() {
+  const z = $('bienvenue'); z.innerHTML = '';
+  const etapes = [
+    { fait: !!lsGet(cleBienvenue('tarifs')) || D.journal.length > 0, txt: 'Vérifie tes prestations et tes prix', action: () => vue('tarifs') },
+    { fait: !!P().logo, txt: 'Ajoute ton logo', action: () => vue('reglages') },
+    { fait: D.journal.length > 0, txt: 'Enregistre ta première prestation', action: () => ouvrirSaisie() },
+  ];
+  const restantes = etapes.filter(e => !e.fait).length;
+  if (!restantes || lsGet(cleBienvenue('masquee'))) return;
+  const k = el('div', 'carte bienvenue');
+  const l1 = el('div', 'ligne1'); l1.appendChild(el('span', '', '👋 Bienvenue !')); l1.appendChild(el('span', 'badge', (3 - restantes) + '/3'));
+  k.appendChild(l1);
+  k.appendChild(el('div', 'ligne2', 'Trois petits pas pour bien démarrer :'));
+  etapes.forEach(e => {
+    const b = el('button', 'etape-bienvenue' + (e.fait ? ' faite' : ''));
+    b.appendChild(el('span', 'coche', e.fait ? '✓' : ''));
+    b.appendChild(el('span', '', e.txt));
+    if (!e.fait) { b.appendChild(el('span', 'chevron', '›')); b.onclick = e.action; }
+    k.appendChild(b);
+  });
+  const m = el('button', 'lien', 'Masquer'); m.onclick = () => { lsSet(cleBienvenue('masquee'), '1'); afficherBienvenue(); };
+  k.appendChild(m);
+  z.appendChild(k);
+}
+
 function afficherAccueil() {
   if (!D) return;
+  afficherBienvenue();
   afficherRdvAccueil();
   const z = $('journee'); z.innerHTML = '';
   const jour = D.journal.filter(r => r.iso === D.aujourdHuiIso).reverse();
@@ -961,10 +989,10 @@ function afficherOffres() {
 
   const sv = $('surveiller'); sv.innerHTML = '';
   const bloc = (titre, liste, detail) => {
+    if (!liste.length) return; // rien à surveiller : pas de carte vide
     const k = el('div', 'carte');
     k.appendChild(el('div', 'ligne1', titre + ' (' + liste.length + ')'));
     const l = el('div', 'liens-clientes');
-    if (!liste.length) l.appendChild(el('span', 'discret', 'Personne pour l\'instant.'));
     liste.forEach(c => { const b = el('button', 'puce', detail(c)); b.onclick = () => ouvrirFiche(c.cle); l.appendChild(b); });
     k.appendChild(l);
     sv.appendChild(k);
@@ -972,6 +1000,7 @@ function afficherOffres() {
   bloc('🎁 ' + RED() + ' à leur prochaine visite', D.clientes.filter(prochesOffre), c => c.nom);
   bloc('🎂 Anniversaire ce mois-ci', D.clientes.filter(anniversaireCeMois), c => c.nom + ' (' + c.anniversaire + ')');
   bloc('💤 À relancer (plus de ' + (P().relance || 60) + ' jours)', D.clientes.filter(absente), c => c.nom + ' (' + c.derniere + ')');
+  $('titreSurveiller').classList.toggle('cache', !sv.children.length);
 }
 
 /* ======================= ACHATS ======================= */
@@ -1061,7 +1090,8 @@ function barres(zone, valeurs, icone, vide, format, garderOrdre) {
 }
 
 function afficherBilan() {
-  $('jourNb').textContent = D.jour.nb; $('jourCa').textContent = euros(D.jour.ca);
+  $('jourSous').textContent = D.jour.nb + ' prestation' + (D.jour.nb > 1 ? 's' : '');
+  $('jourCa').textContent = euros(D.jour.ca);
   $('titreAnnee').textContent = 'Mois par mois (' + D.annee + ')';
   $('titreBilanAnnee').textContent = 'Bilan ' + D.annee;
   const tb = $('tableMois'); tb.innerHTML = '';

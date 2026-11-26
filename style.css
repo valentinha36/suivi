@@ -432,6 +432,20 @@ body.sans-offres.sans-fidelite .m-offres-ou-fidelite { display: none !important;
 .rappels .liens-clientes .puce { text-decoration: none; }
 .rappels .liens-clientes .puce.envoye { background: var(--fond); color: var(--gris); }
 
+/* ---------- Carte Bienvenue ---------- */
+.bienvenue { border: 1.5px solid var(--rose); }
+.etape-bienvenue {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 0; background: none; border: none;
+  border-bottom: 1px solid var(--trait); color: var(--texte); font: inherit; font-size: 15px; font-weight: 600; text-align: left; cursor: pointer;
+}
+.etape-bienvenue span:nth-child(2) { flex: 1; }
+.etape-bienvenue .coche {
+  width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--trait); display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; flex: 0 0 auto;
+}
+.etape-bienvenue.faite { color: var(--gris); text-decoration: line-through; cursor: default; }
+.etape-bienvenue.faite .coche { background: var(--vert); border-color: var(--vert); color: #fff; }
+
 /* ---------- Réglages ---------- */
 a.menu-ligne { text-decoration: none; }
 .pastille { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 7px; vertical-align: -1px; }
