@@ -551,9 +551,11 @@ function phraseFideliteApres(c, offerte) {
   if (n === P - 1) return ' Fidélité : ' + n + '/' + P + ', votre prochain passage sera à ' + RED() + ' 🎁';
   return ' Fidélité : ' + n + '/' + P + ', encore ' + (P - n) + ' passage' + (P - n > 1 ? 's' : '') + ' avant ' + RED() + '.';
 }
-const texteMerci = (c, offerte) => 'Merci ' + c.nom + ' pour votre visite chez ' + nomSalon() + ' !' + phraseFideliteApres(c, offerte) + ' À bientôt 😊';
-const texteAvis = nom => 'Bonjour ' + nom + ', merci pour votre visite chez ' + nomSalon() + ' ! Si vous avez une minute, votre avis nous aiderait beaucoup : ' + P().avis;
-const texteRelance = nom => 'Bonjour ' + nom + ', cela fait un moment ! Au plaisir de vous revoir chez ' + nomSalon() + '. Répondez à ce message pour prendre rendez-vous 😊';
+/** Prénom seul pour les SMS (« Julie Martin » → « Julie »). */
+const prenom = n => String(n || '').trim().split(/s+/)[0];
+const texteMerci = (c, offerte) => 'Merci ' + prenom(c.nom) + ' pour votre visite chez ' + nomSalon() + ' !' + phraseFideliteApres(c, offerte) + ' À bientôt 😊';
+const texteAvis = nom => 'Bonjour ' + prenom(nom) + ', merci pour votre visite chez ' + nomSalon() + ' ! Si vous avez une minute, votre avis nous aiderait beaucoup : ' + P().avis;
+const texteRelance = nom => 'Bonjour ' + prenom(nom) + ', cela fait un moment ! Au plaisir de vous revoir chez ' + nomSalon() + '. Répondez à ce message pour prendre rendez-vous 😊';
 
 function appliquerReglages() {
   ['fidelite', 'offres', 'options', 'paiement', 'achats', 'fiche', 'heure']
@@ -656,7 +658,7 @@ function majContact() {
   $('ficheSms').classList.toggle('cache', tel.length < 6);
   $('ficheAppel').href = 'tel:' + tel;
   const c = D.clientes.find(x => x.cle === ficheCle);
-  $('ficheSms').href = 'sms:' + tel + '?&body=' + encodeURIComponent('Bonjour ' + (c ? c.nom : '') + ', ');
+  $('ficheSms').href = 'sms:' + tel + '?&body=' + encodeURIComponent('Bonjour ' + (c ? prenom(c.nom) : '') + ', ');
   $('ficheRelance').classList.toggle('cache', !(c && absente(c)));
   if (c) $('ficheRelance').href = lienSms(tel, texteRelance(c.nom));
   $('ficheAvis').classList.toggle('cache', !P().avis);
@@ -665,7 +667,7 @@ function majContact() {
   $('ficheCarte').classList.toggle('cache', !lien || GENERIQUES.includes(ficheCle));
   $('ficheCarteVoir').classList.toggle('cache', !lien || GENERIQUES.includes(ficheCle));
   if (lien) {
-    $('ficheCarte').href = lienSms(tel, 'Bonjour ' + c.nom + ', voici votre carte de fidélité ' + nomSalon() + ' : ' + lien + ' (elle se met à jour à chaque passage).');
+    $('ficheCarte').href = lienSms(tel, 'Bonjour ' + prenom(c.nom) + ', voici votre carte de fidélité ' + nomSalon() + ' : ' + lien + ' (elle se met à jour à chaque passage).');
     $('ficheCarteVoir').href = lien;
   }
   if (c) $('ficheAvis').href = lienSms(tel, texteAvis(c.nom));
@@ -1392,7 +1394,7 @@ function envoyerRdv(r, supprimer) {
 function texteRappel(r) {
   const demain = r.iso === isoPlus(D.aujourdHuiIso, 1), auj = r.iso === D.aujourdHuiIso;
   const quand = auj ? 'aujourd\'hui' : demain ? 'demain' : 'le ' + jourLong(r.iso);
-  return 'Bonjour ' + r.client + ', petit rappel de votre rendez-vous chez ' + nomSalon() + ' ' + quand + ' à ' + heureTexte(r.heure) +
+  return 'Bonjour ' + prenom(r.client) + ', petit rappel de votre rendez-vous chez ' + nomSalon() + ' ' + quand + ' à ' + heureTexte(r.heure) +
     '.' + phraseFideliteAvant(ficheDe(r.client), r.iso) + ' En cas d\'empêchement, merci de répondre à ce message. À bientôt !';
 }
 
