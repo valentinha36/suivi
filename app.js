@@ -462,6 +462,7 @@ function enregistrer() {
   mettreEnAttente(item);
   if (rdvEnCours) { const id = rdvEnCours; rdvEnCours = null; envoyerRdv({ id, statut: 'fait' }); }
   majLocaleApresSaisie(cliente, p.date);
+  dernierPassageOffert = !!fidelite;
   afficherSucces(horsLigne ? '!' : '✓', horsLigne ? 'Gardé sur le téléphone' : 'Enregistré pour ' + p.client,
     horsLigne ? 'Pas d\'internet : la saisie sera envoyée automatiquement dès le retour du réseau.' : detail, aPayer);
   envoyerAttente();
@@ -478,11 +479,15 @@ function majLocaleApresSaisie(c, iso) {
   if (!x.derniere || dateNum(fr) >= dateNum(x.derniere)) x.derniere = fr;
 }
 
+let dernierPassageOffert = false;
 function afficherSucces(icone, titre, detail, montant) {
   document.body.classList.remove('en-saisie');
   const bA = $('succesAvis');
   const c = cliente && D.clientes.find(x => x.cle === cliente.cle);
   bA.classList.toggle('cache', !P().avis || !cliente);
+  const bM = $('succesMerci');
+  bM.classList.toggle('cache', !c || GENERIQUES.includes(c.cle));
+  if (c) bM.href = lienSms(c.tel, texteMerci(c, dernierPassageOffert));
   if (P().avis && cliente) bA.href = lienSms(c && c.tel, texteAvis(cliente.nom));
   $('formulaire').classList.add('cache'); $('succes').classList.remove('cache');
   $('succesIcone').textContent = icone; $('succesTitre').textContent = titre; $('succesDetail').textContent = detail;
@@ -531,6 +536,22 @@ function lienSms(tel, texte) {
   const num = String(tel || '').replace(/[^\d+]/g, '');
   return 'sms:' + num + '?&body=' + encodeURIComponent(texte);
 }
+/** Fidélité avant un rendez-vous : le passage à venir est-il le passage récompensé ? */
+function phraseFideliteAvant(c, iso) {
+  if (!c || GENERIQUES.includes(c.cle) || !fideliteActive() || (iso && iso < D.debutOffreIso)) return '';
+  const P = D.passagesPourOffre, n = c.depuis % P;
+  if (n === P - 1) return ' Bonne nouvelle : ce passage est votre ' + P + 'e, il sera à ' + RED() + ' sur la prestation la plus chère 🎁';
+  return ' Votre fidélité : ' + n + '/' + P + ', encore ' + (P - n) + ' passage' + (P - n > 1 ? 's' : '') + ' avant ' + RED() + '.';
+}
+/** Fidélité juste après un passage (compteur déjà mis à jour). */
+function phraseFideliteApres(c, offerte) {
+  if (!c || GENERIQUES.includes(c.cle) || !fideliteActive()) return '';
+  const P = D.passagesPourOffre, n = c.depuis % P;
+  if (offerte) return ' Votre réduction fidélité de ' + RED() + ' a été appliquée aujourd\'hui 🎁 Votre carte repart à zéro.';
+  if (n === P - 1) return ' Fidélité : ' + n + '/' + P + ', votre prochain passage sera à ' + RED() + ' 🎁';
+  return ' Fidélité : ' + n + '/' + P + ', encore ' + (P - n) + ' passage' + (P - n > 1 ? 's' : '') + ' avant ' + RED() + '.';
+}
+const texteMerci = (c, offerte) => 'Merci ' + c.nom + ' pour votre visite chez ' + nomSalon() + ' !' + phraseFideliteApres(c, offerte) + ' À bientôt 😊';
 const texteAvis = nom => 'Bonjour ' + nom + ', merci pour votre visite chez ' + nomSalon() + ' ! Si vous avez une minute, votre avis nous aiderait beaucoup : ' + P().avis;
 const texteRelance = nom => 'Bonjour ' + nom + ', cela fait un moment ! Au plaisir de vous revoir chez ' + nomSalon() + '. Répondez à ce message pour prendre rendez-vous 😊';
 
@@ -1372,7 +1393,7 @@ function texteRappel(r) {
   const demain = r.iso === isoPlus(D.aujourdHuiIso, 1), auj = r.iso === D.aujourdHuiIso;
   const quand = auj ? 'aujourd\'hui' : demain ? 'demain' : 'le ' + jourLong(r.iso);
   return 'Bonjour ' + r.client + ', petit rappel de votre rendez-vous chez ' + nomSalon() + ' ' + quand + ' à ' + heureTexte(r.heure) +
-    '. En cas d\'empêchement, merci de répondre à ce message. À bientôt !';
+    '.' + phraseFideliteAvant(ficheDe(r.client), r.iso) + ' En cas d\'empêchement, merci de répondre à ce message. À bientôt !';
 }
 
 /** Carte d'un rendez-vous. */
