@@ -270,7 +270,10 @@ tr:last-child td { border-bottom: none; }
 .menu-texte small { font-size: 13px; color: var(--gris); margin-top: 2px; }
 
 /* ---------- Tarifs et offres ---------- */
-.ligne-tarif { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.ligne-tarif { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; padding-top: 10px; border-top: 1px solid var(--trait); }
+.ligne-tarif:first-child { border-top: none; padding-top: 0; }
+.ligne-tarif input[type=text] { flex: 1 1 100% !important; }
+.ligne-tarif .supprimer { margin-left: auto; }
 .ligne-tarif input[type=text] { flex: 1; font-size: 15px; padding: 10px 12px; min-height: 44px; }
 .ligne-tarif .prix-tarif { width: 86px; flex: 0 0 86px; font-size: 15px; padding: 10px; min-height: 44px; text-align: right; font-weight: 700; }
 .ligne-tarif .euro { color: var(--gris); font-weight: 700; }

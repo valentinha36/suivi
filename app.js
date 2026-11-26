@@ -935,7 +935,7 @@ function dessinerTarifs() {
       duree.oninput = () => { t.duree = parseInt(duree.value, 10) || 0; majTaux(); };
       const sup = el('button', 'supprimer', '✕'); sup.title = 'Retirer';
       sup.onclick = () => { tarifsEdition.splice(i, 1); dessinerTarifs(); };
-      ligne.appendChild(nom); ligne.appendChild(prix); ligne.appendChild(el('span', 'euro', '€')); ligne.appendChild(duree); ligne.appendChild(sup);
+      ligne.appendChild(nom); ligne.appendChild(prix); ligne.appendChild(el('span', 'euro', '€')); ligne.appendChild(duree); ligne.appendChild(el('span', 'euro', 'min')); ligne.appendChild(sup);
       z.appendChild(ligne); z.appendChild(taux); majTaux();
     });
   });
