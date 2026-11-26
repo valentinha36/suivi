@@ -146,7 +146,9 @@ function validerPin() {
 
 function charger() {
   if (!API) {
-    $('chargement').textContent = "🔗 Ouvre l'application avec le lien qui t'a été envoyé (il contient l'adresse de ton salon).";
+    const c = $('chargement'); c.textContent = "🔗 Ouvre l'application avec le lien de ton salon.";
+    const p = el('p', '', "Pas encore d'application ? "); const l = el('a', '', 'Crée la tienne gratuitement'); l.href = 'inscription.html'; l.style.color = 'var(--rose)';
+    p.appendChild(l); c.appendChild(p);
     return;
   }
   if (!PIN) return demanderPin();

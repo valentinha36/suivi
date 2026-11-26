@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Créer mon application de suivi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3b2a4f">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Application gratuite de suivi clients pour indépendants : prestations, fidélité automatique, agenda, bilan et livre des recettes.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=13">
+<style>
+  .intro { background: var(--degrade); color: #fff; border-radius: 24px; padding: 24px 20px; box-shadow: var(--ombre-forte); margin-bottom: 16px; }
+  .intro h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; margin: 0 0 8px; line-height: 1.2; }
+  .intro p { margin: 0; opacity: .9; font-size: 15px; line-height: 1.5; }
+  .atouts { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 6px; font-size: 14px; font-weight: 600; }
+  .choix-metier { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .choix-metier .presta { min-height: 56px; }
+  .case { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; font-size: 14px; color: var(--texte-2); line-height: 1.45; }
+  .case input { width: 22px; height: 22px; flex: 0 0 22px; margin: 1px 0 0; accent-color: var(--rose); }
+  .piege { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .lien-final { word-break: break-all; font-size: 14px; background: var(--fond); border-radius: 12px; padding: 12px; margin-top: 10px; color: var(--texte-2); }
+  .code-final { font-size: 34px; font-weight: 800; letter-spacing: 8px; text-align: center; margin: 6px 0 0; }
+  .erreur-form { color: var(--rouge); font-weight: 600; margin-top: 12px; min-height: 20px; }
+  body { padding-bottom: 40px; }
+</style>
+</head>
+<body>
+<main>
+  <section id="formulaire">
+    <div class="intro">
+      <h1>Ton application de suivi clients, gratuite</h1>
+      <p>Note tes prestations en quelques secondes, fidélise tes clients et suis ton chiffre d'affaires, depuis ton téléphone.</p>
+      <ul class="atouts">
+        <li>✓ Fidélité automatique et rappels par SMS</li>
+        <li>✓ Agenda, bilan et livre des recettes</li>
+        <li>✓ Fonctionne même sans internet</li>
+      </ul>
+    </div>
+
+    <div class="bloc">
+      <h2 class="titre-bloc"><span class="etape">1</span>Ton activité</h2>
+      <label class="etiquette" for="nom">Nom affiché dans l'application</label>
+      <input type="text" id="nom" maxlength="60" placeholder="ex. Ongles by Julie" autocomplete="organization">
+      <label class="etiquette">Ton métier</label>
+      <div class="choix-metier" id="metiers"></div>
+    </div>
+
+    <div class="bloc">
+      <h2 class="titre-bloc"><span class="etape">2</span>Ta clientèle</h2>
+      <div class="paiements" id="mots">
+        <button class="puce" data-mot="Cliente">👩 Surtout des femmes</button>
+        <button class="puce" data-mot="Client">👨 Surtout des hommes</button>
+        <button class="puce" data-mot="Mixte">👥 Mixte</button>
+      </div>
+    </div>
+
+    <div class="bloc">
+      <h2 class="titre-bloc"><span class="etape">3</span>Ton code d'accès</h2>
+      <p class="discret" style="margin-top:0">4 à 8 chiffres. Il sera demandé une seule fois sur chaque téléphone. Note-le bien.</p>
+      <div class="quand">
+        <div><label class="etiquette" for="pin">Code</label><input type="password" id="pin" inputmode="numeric" maxlength="8" autocomplete="new-password"></div>
+        <div><label class="etiquette" for="pin2">Encore une fois</label><input type="password" id="pin2" inputmode="numeric" maxlength="8" autocomplete="new-password"></div>
+      </div>
+      <label class="etiquette" for="email">Ton e-mail (facultatif)</label>
+      <input type="text" id="email" inputmode="email" autocomplete="email" maxlength="120" placeholder="pour être recontacté(e) en cas de besoin">
+      <div class="piege" aria-hidden="true"><label>Site web <input type="text" id="site" tabindex="-1" autocomplete="off"></label></div>
+      <label class="case"><input type="checkbox" id="accord">
+        <span>J'ai compris que mes données et celles de mes clients sont enregistrées dans un Google Sheet géré par le prestataire de l'application, uniquement pour la faire fonctionner. Je reste responsable des données de mes clients et je les informe (affiche RGPD fournie sur demande).</span></label>
+      <button class="gros" id="btnCreer" onclick="creer()">Créer mon application</button>
+      <div class="erreur-form" id="erreurForm" role="alert"></div>
+    </div>
+    <p class="discret" style="text-align:center">Déjà inscrit(e) ? Ouvre simplement le lien de ton application.</p>
+  </section>
+
+  <section id="attente" class="cache">
+    <div class="chargement">Création de ton application…<br><small>Environ 20 secondes, ne ferme pas cette page.</small></div>
+  </section>
+
+  <section id="fini" class="cache">
+    <div class="succes">
+      <div class="succes-rond">✓</div>
+      <h1 class="titre-ecran" style="text-align:center">C'est prêt !</h1>
+      <p class="discret" style="text-align:center;font-size:16px" id="finiTexte"></p>
+    </div>
+    <div class="carte">
+      <div class="ligne1">Ton code d'accès</div>
+      <div class="code-final" id="finiCode"></div>
+      <div class="ligne1" style="margin-top:16px">Le lien de ton application</div>
+      <div class="lien-final" id="finiLien"></div>
+      <button class="gros secondaire" onclick="copier()">Copier le lien</button>
+      <p class="discret">Garde ce lien précieusement (envoie-le toi par e-mail ou SMS) : c'est l'adresse de ton application.</p>
+    </div>
+    <div class="carte">
+      <div class="ligne1">Installer sur ton téléphone</div>
+      <div class="ligne2">Ouvre l'application, puis :<br>• iPhone (Safari) : bouton Partager → « Sur l'écran d'accueil »<br>• Android (Chrome) : menu ⋮ → « Ajouter à l'écran d'accueil »</div>
+    </div>
+    <a class="gros bouton-lien" id="finiOuvrir" href="#">Ouvrir mon application</a>
+  </section>
+</main>
+<div id="msg" class="msg" role="status"></div>
+<script>
+'use strict';
+var SERVEUR = 'https://script.google.com/macros/s/AKfycbxWejimyOL5FGpNqy3qYO6JLQZswiVAsl_CDho2ueERr3MP3WwFob3f8E_UDSnLzZQE/exec';
+var METIERS = [['Onglerie', '💅'], ['Coiffure et barbier', '✂️'], ['Esthétique', '🌸'], ['Bien-être', '🌿'], ['Tatouage et piercing', '✒️'],
+  ['Sport et coaching', '🏋️'], ['Cours et formation', '📚'], ['Services aux animaux', '🐾'], ['Services à domicile', '🏠'],
+  ['Couture et retouches', '🧵'], ['Photographie', '📷'], ['Conseil et accompagnement', '🧭'], ['Transport de personnes', '🚗']];
+var metier = '', mot = '', debut = Date.now(), resultat = null;
+function $(id) { return document.getElementById(id); }
+
+METIERS.forEach(function (m) {
+  var b = document.createElement('button'); b.className = 'presta'; b.textContent = m[1] + ' ' + m[0];
+  b.onclick = function () { metier = m[0]; document.querySelectorAll('#metiers .presta').forEach(function (x) { x.classList.toggle('on', x === b); }); };
+  $('metiers').appendChild(b);
+});
+document.querySelectorAll('#mots .puce').forEach(function (b) {
+  b.onclick = function () { mot = b.dataset.mot; document.querySelectorAll('#mots .puce').forEach(function (x) { x.classList.toggle('on', x === b); }); };
+});
+
+function refus(t) { $('erreurForm').textContent = '👉 ' + t; }
+function creer() {
+  $('erreurForm').textContent = '';
+  var f = { nom: $('nom').value.trim(), metier: metier, mot: mot, pin: $('pin').value.trim(), email: $('email').value.trim(), site: $('site').value };
+  if (f.nom.length < 2) return refus('Indique le nom de ton activité.');
+  if (!f.metier) return refus('Choisis ton métier.');
+  if (!f.mot) return refus('Choisis ta clientèle.');
+  if (!/^\d{4,8}$/.test(f.pin)) return refus('Le code doit faire de 4 à 8 chiffres.');
+  if (f.pin !== $('pin2').value.trim()) return refus('Les deux codes ne sont pas identiques.');
+  if (!$('accord').checked) return refus('Coche la case d\'information sur les données.');
+  if (Date.now() - debut < 4000) return refus('Vérifie tes réponses puis réessaie.');
+  $('formulaire').classList.add('cache'); $('attente').classList.remove('cache'); window.scrollTo(0, 0);
+  fetch(SERVEUR, { method: 'POST', credentials: 'omit', body: JSON.stringify({ action: 'inscription', f: f }) })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (!j.ok) throw new Error(j.erreur);
+      resultat = j.data;
+      // L'application s'ouvrira directement, sans redemander le code sur ce téléphone
+      try {
+        localStorage.setItem('salon_suivi', resultat.salon); localStorage.setItem('api_suivi', '');
+        localStorage.setItem('pin_suivi', f.pin);
+        ['donnees_suivi', 'attente_suivi'].forEach(function (k) { localStorage.removeItem(k); });
+      } catch (e) { /* stockage indisponible */ }
+      $('finiTexte').textContent = 'L\'application « ' + resultat.nom + ' » est créée.';
+      $('finiCode').textContent = f.pin;
+      $('finiLien').textContent = resultat.lien;
+      $('finiOuvrir').href = resultat.lien;
+      $('attente').classList.add('cache'); $('fini').classList.remove('cache');
+    })
+    .catch(function (e) {
+      $('attente').classList.add('cache'); $('formulaire').classList.remove('cache');
+      refus(e && e.message && !/fetch/i.test(e.message) ? e.message : 'Pas de connexion internet. Réessaie dans un moment.');
+    });
+}
+function copier() {
+  var t = resultat ? resultat.lien : '';
+  var ok = function () { var m = $('msg'); m.textContent = '✅ Lien copié'; m.style.display = 'block'; setTimeout(function () { m.style.display = 'none'; }, 2500); };
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(ok, function () { prompt('Copie ce lien :', t); });
+  else prompt('Copie ce lien :', t);
+}
+</script>
+</body>
+</html>
