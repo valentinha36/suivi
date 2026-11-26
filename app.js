@@ -1600,12 +1600,6 @@ function afficherReglagesEcran() {
   // Mon activité
   const b1 = bloc('Mon activité');
   champ(b1, 'regNom', 'Nom affiché en haut', g.nomSalon, { maxLength: 60 });
-  const lm = el('label', 'etiquette', 'Métier'); lm.htmlFor = 'regMetier'; b1.appendChild(lm);
-  const sm = el('select'); sm.id = 'regMetier';
-  (g.metiers || []).forEach(m => sm.appendChild(new Option(m.icone + ' ' + m.nom, m.nom)));
-  sm.value = g.metier; sm.onchange = () => { regEdition.metier = sm.value; };
-  b1.appendChild(sm);
-  b1.appendChild(el('div', 'ligne2', 'Si tu changes de métier et que tu n\'as pas modifié tes tarifs, les tarifs de départ du nouveau métier sont chargés.'));
   b1.appendChild(el('label', 'etiquette', 'Clientèle'));
   puces(b1, [['Cliente', '👩 Surtout des femmes'], ['Client', '👨 Surtout des hommes'], ['Mixte', '👥 Mixte']], g.mot, v => { regEdition.mot = v; });
 
@@ -1613,8 +1607,25 @@ function afficherReglagesEcran() {
   const b2 = bloc('Apparence');
   b2.appendChild(el('label', 'etiquette', 'Couleur'));
   puces(b2, (g.themes || Object.keys(COULEURS_APERCU)).map(t => [t, t, COULEURS_APERCU[t]]), regEdition.couleur, v => { regEdition.couleur = v; });
-  champ(b2, 'regLogo', 'Logo (lien d\'une image, facultatif)', p.logo, { placeholder: 'https://…', inputMode: 'url' },
-    'Lien d\'une image en ligne (Instagram, site, Google Drive partagé). Vide = l\'icône du métier.');
+  regEdition.logo = p.logo || '';
+  b2.appendChild(el('label', 'etiquette', 'Logo (facultatif)'));
+  const lz = el('div', 'logo-choix');
+  const apercu = el('div', 'logo-apercu');
+  const majApercu = () => {
+    apercu.innerHTML = '';
+    if (regEdition.logo) { const im = el('img'); im.src = regEdition.logo; im.alt = 'Logo'; apercu.appendChild(im); }
+    else apercu.textContent = icone();
+    bSup.classList.toggle('cache', !regEdition.logo);
+  };
+  const fichier = el('input'); fichier.type = 'file'; fichier.accept = 'image/*'; fichier.className = 'cache';
+  fichier.onchange = () => { const f = fichier.files && fichier.files[0]; if (f) reduireImage(f).then(u => { regEdition.logo = u; majApercu(); }).catch(e => erreur(e)); fichier.value = ''; };
+  const bChoisir = el('button', 'lien', '📷 Choisir une image'); bChoisir.onclick = () => fichier.click();
+  const bSup = el('button', 'lien danger', 'Retirer'); bSup.onclick = () => { regEdition.logo = ''; majApercu(); };
+  const actions = el('div', 'logo-actions'); actions.appendChild(bChoisir); actions.appendChild(bSup);
+  lz.appendChild(apercu); lz.appendChild(actions); lz.appendChild(fichier);
+  b2.appendChild(lz);
+  b2.appendChild(el('div', 'ligne2', 'Une photo ou ton logo, depuis la galerie du téléphone. Sans logo : l\'icône du métier.'));
+  majApercu();
 
   // Fonctions
   const b3 = bloc('Fonctions de l\'application');
@@ -1629,10 +1640,11 @@ function afficherReglagesEcran() {
   });
 
   // Clients et SMS
-  const b4 = bloc('Clients et SMS');
+  const b4 = bloc('Clients');
   champ(b4, 'regAvis', 'Lien pour laisser un avis Google (facultatif)', p.avis, { placeholder: 'https://g.page/r/…', inputMode: 'url' },
     'Google Maps → ta fiche → « Demander des avis » → copier le lien. Ajoute le bouton « Avis Google ».');
-  champ(b4, 'regRelance', 'Relancer après combien de jours sans visite', p.relance || 60, { type: 'number', inputMode: 'numeric', min: 1 });
+  champ(b4, 'regRelance', 'Client à relancer après combien de jours sans visite', p.relance || 60, { type: 'number', inputMode: 'numeric', min: 1 },
+    'Il apparaît alors dans « À surveiller » sur l\'accueil, avec un bouton pour lui écrire. Aucun SMS n\'est envoyé tout seul : c\'est toi qui décides.');
   champ(b4, 'regDeplacement', 'Frais de déplacement à domicile (€, facultatif)', p.deplacement, { inputMode: 'decimal' },
     'Ajoute un bouton « Déplacement » à la saisie. Vide = pas de bouton.');
 
@@ -1651,16 +1663,36 @@ function afficherReglagesEcran() {
   champ(b6, 'regPin2', 'Encore une fois', '', { type: 'password', inputMode: 'numeric', maxLength: 8, autocomplete: 'new-password' });
 }
 
+/** Réduit l'image choisie en carré de 192 px (léger : enregistré directement dans le Google Sheet). */
+function reduireImage(f) {
+  return new Promise((ok, ko) => {
+    if (!/^image\//.test(f.type)) return ko(new Error('Choisis une image.'));
+    const url = URL.createObjectURL(f), img = new Image();
+    img.onload = () => {
+      const T = 192, c = document.createElement('canvas'); c.width = T; c.height = T;
+      const x = c.getContext('2d'), cote = Math.min(img.width, img.height);
+      x.fillStyle = '#ffffff'; x.fillRect(0, 0, T, T);
+      x.drawImage(img, (img.width - cote) / 2, (img.height - cote) / 2, cote, cote, 0, 0, T, T); // centré, recadré en carré
+      URL.revokeObjectURL(url);
+      let q = 0.85, d = c.toDataURL('image/jpeg', q);
+      while (d.length > 40000 && q > 0.4) { q -= 0.15; d = c.toDataURL('image/jpeg', q); }
+      ok(d);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); ko(new Error('Image illisible, essaie une autre photo.')); };
+    img.src = url;
+  });
+}
+
 function sauverReglages() {
   const v = id => $(id).value.trim();
   const pin = v('regPin');
   if (v('regNom').length < 2) return message('👉 Indique le nom affiché.');
   if (pin && !/^\d{4,8}$/.test(pin)) return message('👉 Le code doit faire de 4 à 8 chiffres.');
   if (pin && pin !== v('regPin2')) return message('👉 Les deux codes ne sont pas identiques.');
-  for (const id of ['regLogo', 'regAvis']) if (v(id) && !/^https:\/\/\S+$/.test(v(id))) return message('👉 Un lien doit commencer par https://');
+  if (v('regAvis') && !/^https:\/\/\S+$/.test(v('regAvis'))) return message('👉 Le lien d\'avis doit commencer par https://');
   const r = {
     nom: v('regNom'), metier: regEdition.metier, mot: regEdition.mot, modules: regEdition.modules, pin,
-    plus: { couleur: regEdition.couleur, logo: v('regLogo'), avis: v('regAvis'), relance: v('regRelance'), deplacement: v('regDeplacement'),
+    plus: { couleur: regEdition.couleur, logo: regEdition.logo, avis: v('regAvis'), relance: v('regRelance'), deplacement: v('regDeplacement'),
       objectif: v('regObjectif'), seuil: v('regSeuil'), urssaf: v('regUrssaf') },
   };
   const b = $('btnReglages'); b.disabled = true; b.textContent = 'Enregistrement…';

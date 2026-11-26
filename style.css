@@ -438,6 +438,10 @@ a.menu-ligne { text-decoration: none; }
 .interrupteur input:checked + .interrupteur-glissiere { background: var(--rose); }
 .interrupteur input:checked + .interrupteur-glissiere::after { transform: translateX(20px); }
 .interrupteur input:focus-visible + .interrupteur-glissiere { box-shadow: 0 0 0 3px var(--teinte); }
+.logo-choix { display: flex; align-items: center; gap: 14px; }
+.logo-apercu { width: 64px; height: 64px; border-radius: 18px; background: var(--teinte); display: flex; align-items: center; justify-content: center; font-size: 30px; overflow: hidden; flex: 0 0 auto; }
+.logo-apercu img { width: 100%; height: 100%; object-fit: cover; }
+.logo-actions { display: flex; flex-wrap: wrap; gap: 0 18px; }
 #formReglages .carte > .ligne1 { font-size: 17px; margin-bottom: 2px; }
 
 /* ---------- Mode sombre (suit le réglage du téléphone) ---------- */
