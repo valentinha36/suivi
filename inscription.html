@@ -130,7 +130,7 @@ var COULEURS = {
 /** Aperçu immédiat : la page prend la couleur choisie. */
 function appliquerCouleur(nom) {
   var t = COULEURS[nom], st = document.documentElement.style;
-  st.setProperty('--rose', t[0]); st.setProperty('--rose-clair', t[3]);
+  st.setProperty('--rose', t[0]); st.setProperty('--rose-clair', t[3]); st.setProperty('--prune', t[2]);
   st.setProperty('--degrade', 'linear-gradient(135deg, ' + t[1] + ' 0%, ' + t[2] + ' 55%, ' + t[0] + ' 100%)');
   st.setProperty('--degrade-bouton', 'linear-gradient(135deg, ' + t[0] + ' 0%, ' + t[4] + ' 100%)');
   var m = document.querySelector('meta[name=theme-color]'); if (m) m.content = t[1];
