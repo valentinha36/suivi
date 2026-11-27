@@ -290,6 +290,7 @@ function init() {
   initAchats();
   rafraichir();
   vue('accueil');
+  setTimeout(() => lancerVisite(), 700);
 }
 
 /** Met à jour toutes les vues avec de nouvelles données. */
@@ -313,8 +314,12 @@ function rafraichir() {
 /* Écrans et onglet du bas correspondant (les sous-écrans allument leur onglet parent) */
 const ONGLET_DE = { accueil: 'accueil', agenda: 'agenda', nouvelle: 'nouvelle', clientes: 'clientes', fiche: 'clientes', bilan: 'bilan', plus: '', reglages: '', import: '', abonnement: '', tarifs: '', offres: '', achats: '', recettes: 'bilan', stats: 'bilan' };
 function vue(v) {
+  const avant = vueActive;
   vueActive = v;
+  fermerGlisses();
   Object.keys(ONGLET_DE).forEach(x => $('v-' + x).classList.toggle('cache', x !== v));
+  animerEcran($('v-' + v), sensTransition(avant, v));
+  if (v !== 'accueil') videRecherche();
   ['accueil', 'agenda', 'clientes', 'nouvelle', 'bilan'].forEach(x => $('t-' + x).classList.toggle('actif', ONGLET_DE[v] === x));
   document.body.classList.toggle('en-saisie', v === 'nouvelle' && !$('formulaire').classList.contains('cache'));
   if (v === 'tarifs') { afficherTarifs(); lsSet(cleBienvenue('tarifs'), '1'); }
@@ -348,7 +353,7 @@ function afficherBienvenue() {
   const restantes = etapes.filter(e => !e.fait).length;
   if (!restantes || lsGet(cleBienvenue('masquee'))) return;
   const k = el('div', 'carte bienvenue');
-  const l1 = el('div', 'ligne1'); l1.appendChild(el('span', '', '👋 Bienvenue !')); l1.appendChild(el('span', 'badge', (3 - restantes) + '/3'));
+  const l1 = el('div', 'ligne1'); l1.appendChild(avecIco(el('span', 'titre-ico', 'Bienvenue !'), 'etincelles')); l1.appendChild(el('span', 'badge', (3 - restantes) + '/3'));
   k.appendChild(l1);
   k.appendChild(el('div', 'ligne2', 'Trois petits pas pour bien démarrer :'));
   etapes.forEach(e => {
@@ -403,6 +408,7 @@ function nouvelleSaisie() {
   $('recherche').value = ''; $('prix').value = '';
   $('prixAuto').classList.add('cache');
   $('clienteChoisie').classList.add('cache'); $('clienteRecherche').classList.remove('cache');
+  $('dejaFait').innerHTML = '';
   $('formulaire').classList.remove('cache'); $('succes').classList.add('cache');
   document.body.classList.toggle('en-saisie', vueActive === 'nouvelle');
   $('btnEnregistrer').disabled = false; $('btnEnregistrer').textContent = '✔ Enregistrer';
@@ -444,7 +450,8 @@ function filtrerClientes() {
 
 function boutonCliente(c) {
   const b = el('button', 'choix');
-  b.appendChild(el('span', '', c.nom));
+  b.appendChild(avatar(c.nom));
+  b.appendChild(el('span', 'choix-nom', c.nom));
   b.appendChild(el('small', '', infoCliente(c)));
   b.onclick = () => choisirCliente(c);
   return b;
@@ -454,14 +461,15 @@ function choisirCliente(c) {
   cliente = c;
   $('clienteNom').textContent = c.nom;
   $('clienteChoisie').classList.remove('cache'); $('clienteRecherche').classList.add('cache');
+  afficherDejaFait();
   majResume();
 }
-function changerCliente() { cliente = null; $('clienteChoisie').classList.add('cache'); $('clienteRecherche').classList.remove('cache'); $('recherche').focus(); majResume(); }
+function changerCliente() { $('dejaFait').innerHTML = ''; cliente = null; $('clienteChoisie').classList.add('cache'); $('clienteRecherche').classList.remove('cache'); $('recherche').focus(); majResume(); }
 
 function construirePrestations(garderChoix) {
   const zP = $('prestations'), zO = $('options'); zP.innerHTML = ''; zO.innerHTML = '';
   if (!garderChoix) choisis = [];
-  D.tarifs.forEach(t => {
+  tarifsTries().forEach(t => {
     const b = el('button', 'presta' + (choisis.some(x => x.nom === t.nom) ? ' on' : ''), t.nom);
     b.appendChild(el('b', '', (t.option ? '+ ' : '') + euros(t.prix)));
     b.onclick = () => {
@@ -494,7 +502,7 @@ function construireDeplacement() {
 function construirePaiements(zone, quandChoisi) {
   zone.innerHTML = '';
   D.modesPaiement.forEach(m => {
-    const b = el('button', 'puce', (ICONES_PAIEMENT[m] || '') + ' ' + m); b.dataset.mode = m;
+    const b = avecIco(el('button', 'puce', m), ICO_PAIEMENT[m] || 'inconnu'); b.dataset.mode = m;
     b.onclick = () => { zone.querySelectorAll('.puce').forEach(x => x.classList.toggle('on', x === b)); quandChoisi(m); };
     zone.appendChild(b);
   });
@@ -582,6 +590,7 @@ function enregistrer() {
   dernierPassageOffert = !!fidelite;
   afficherSucces(horsLigne ? '!' : '✓', horsLigne ? 'Gardé sur le téléphone' : 'Enregistré pour ' + p.client,
     horsLigne ? 'Pas d\'internet : la saisie sera envoyée automatiquement dès le retour du réseau.' : detail, aPayer);
+  vibrer([14, 60, 22]);
   envoyerAttente();
 }
 
@@ -608,7 +617,7 @@ function afficherSucces(icone, titre, detail, montant) {
   if (P().avis && cliente) bA.href = lienSms(c && c.tel, texteAvis(cliente.nom));
   $('formulaire').classList.add('cache'); $('succes').classList.remove('cache');
   $('succesIcone').textContent = icone; $('succesTitre').textContent = titre; $('succesDetail').textContent = detail;
-  $('succesMontant').textContent = 'À encaisser : ' + euros(montant) + (paiementChoisi ? '  ' + (ICONES_PAIEMENT[paiementChoisi] || '') : '');
+  $('succesMontant').textContent = 'À encaisser : ' + euros(montant) + (paiementChoisi && mod('paiement') ? ' · ' + paiementChoisi : '');
   window.scrollTo(0, 0);
 }
 
@@ -688,6 +697,7 @@ function appliquerReglages() {
   const fAbs = document.querySelector('[data-f="absente"]');
   fAbs.textContent = M('Pas venue depuis ', 'Pas venu depuis ') + j + ' jours';
   $('recherche').placeholder = 'Tape le prénom…';
+  $('rechercheGlobale').placeholder = M('Rechercher une cliente, une prestation…', 'Rechercher un client, une prestation…');
   if (!mod('achats') && vueActive === 'achats') vue('plus');
 }
 
@@ -720,20 +730,26 @@ function afficherClientes() {
   $('nbClientes').textContent = liste.length + ' ' + M('cliente', 'client') + (liste.length > 1 ? 's' : '');
   if (!liste.length) box.appendChild(el('p', 'discret', M('Aucune cliente ne correspond.', 'Aucun client ne correspond.')));
   liste.forEach(c => {
-    const k = el('div', 'carte cliquable');
+    const k = el('div', 'carte cliquable client-carte');
+    k.appendChild(avatar(c.nom));
+    const corps = el('div', 'client-corps'); k.appendChild(corps);
     const l1 = el('div', 'ligne1'); l1.appendChild(el('span', '', c.nom));
     if (prochesOffre(c)) l1.appendChild(el('span', 'badge', '🎁 ' + RED() + ' au prochain'));
     else l1.appendChild(el('span', 'chevron', '›'));
-    k.appendChild(l1);
+    corps.appendChild(l1);
     const infos = [c.total + ' passage' + (c.total > 1 ? 's' : '')];
     if (c.derniere) infos.push('vue le ' + c.derniere);
     if (c.anniversaire) infos.push('🎂 ' + c.anniversaire);
     if (c.ca) infos.push(euros(c.ca));
-    if (c.tel) infos.push('📞');
-    k.appendChild(el('div', 'ligne2', infos.join(' · ')));
-    if (fideliteActive()) k.appendChild(pointsFidelite(c));
+    corps.appendChild(el('div', 'ligne2', infos.join(' · ')));
+    if (fideliteActive()) corps.appendChild(pointsFidelite(c));
     k.onclick = () => ouvrirFiche(c.cle);
-    box.appendChild(k);
+    const tel = String(c.tel || '').replace(/[^0-9+]/g, '');
+    const gauche = tel.length >= 6 ? [
+      { txt: 'Appeler', ico: 'tel', href: 'tel:' + tel, cls: 'appel' },
+      { txt: 'SMS', ico: 'message', href: 'sms:' + tel + '?&body=' + encodeURIComponent('Bonjour ' + prenom(c.nom) + ', ') },
+    ] : [];
+    box.appendChild(glissable(k, gauche, { txt: 'Nouvelle prestation', ico: 'plus', action: () => prestationPour(c) }));
   });
 }
 
@@ -744,6 +760,9 @@ function ouvrirFiche(cle, rafraichissement) {
   const c = D.clientes.find(x => x.cle === cle);
   if (!c) { if (!rafraichissement) message('Cliente introuvable.'); return vue('clientes'); }
   ficheCle = cle;
+  const fe = document.querySelector('.fiche-entete'), avAncien = fe.querySelector('.avatar');
+  if (avAncien) avAncien.remove();
+  fe.insertBefore(avatar(c.nom, true), fe.firstChild);
   $('ficheNom').textContent = c.nom;
   $('ficheNomBouton').textContent = c.nom;
   $('ficheSous').textContent = [c.nomFamille, c.derniere ? 'dernière visite le ' + c.derniere : 'pas encore venue', c.anniversaire ? '🎂 ' + c.anniversaire : '']
@@ -850,9 +869,9 @@ function carteSaisie(r, avecNom) {
   if (r.heure) det.push(r.heure);
   det.push(r.prestation);
   if (r.libelle) det.push(r.libelle === D.libelleFidelite ? '🎁 ' + RED() + '' : '🏷️ ' + r.libelle);
-  if (r.paiement) det.push((ICONES_PAIEMENT[r.paiement] || '') + ' ' + r.paiement);
+  if (r.paiement) det.push(r.paiement);
   k.appendChild(el('div', 'ligne2', det.join(' · ')));
-  const b = el('button', 'lien', '✏️ Modifier');
+  const b = avecIco(el('button', 'lien', 'Modifier'), 'crayon');
   b.onclick = () => ouvrirModification(r.id);
   k.appendChild(b);
   return k;
@@ -916,10 +935,13 @@ function validerModification() {
 
 function supprimerSaisie() {
   if (!enEdition) return;
-  if (!confirm('Supprimer définitivement la saisie de ' + enEdition.client + ' du ' + enEdition.date + ' (' + enEdition.prestation + ') ?')) return;
-  api('supprimer', { id: enEdition.id })
-    .then(j => { fermerModale(); majTout(j.data); message('🗑 Saisie supprimée.'); })
-    .catch(e => erreur(e.horsLigne ? 'Pas d\'internet : réessaie quand le réseau revient.' : e));
+  if (abonnementBloque()) return afficherPaywall();
+  const r = enEdition, i = D.journal.indexOf(r);
+  fermerModale();
+  actionAnnulable('Saisie de ' + r.client + ' supprimée',
+    () => { D.journal = D.journal.filter(x => x !== r); rafraichirApresLocal(); },
+    () => { mettreEnAttente({ action: 'supprimer', uid: uid(), extra: { id: r.id }, resume: 'suppression ' + r.client }); envoyerAttente(); },
+    () => { D.journal.splice(Math.max(0, i), 0, r); rafraichirApresLocal(); });
 }
 
 /* ======================= TARIFS ======================= */
@@ -1154,11 +1176,15 @@ function afficherAchats() {
     const l1 = el('div', 'ligne1'); l1.appendChild(el('span', '', iconeCat(a.categorie) + ' ' + a.libelle)); l1.appendChild(el('span', '', euros(a.total)));
     k.appendChild(l1);
     k.appendChild(el('div', 'ligne2', a.date + ' · ' + a.categorie + (a.q > 1 ? ' · ' + a.q + ' × ' + euros(a.pu) : '')));
-    const b = el('button', 'lien danger', '🗑 Supprimer');
+    const b = avecIco(el('button', 'lien danger', 'Supprimer'), 'poubelle');
     b.onclick = () => {
-      if (!confirm('Supprimer l\'achat « ' + a.libelle + ' » (' + euros(a.total) + ') ?')) return;
-      api('achat_supprimer', { row: a.row }).then(j => { majTout(j.data); message('Achat supprimé.'); })
-        .catch(e => erreur(e.horsLigne ? 'Pas d\'internet : réessaie quand le réseau revient.' : e));
+      if (abonnementBloque()) return afficherPaywall();
+      const i = D.achats.indexOf(a);
+      actionAnnulable('Achat « ' + a.libelle + ' » supprimé',
+        () => { D.achats = D.achats.filter(x => x !== a); afficherAchats(); },
+        () => api('achat_supprimer', { row: a.row }).then(j => majTout(j.data))
+          .catch(e => { erreur(e.horsLigne ? 'Pas d\'internet : l\'achat n\'a pas été supprimé, réessaie.' : e); rafraichir(); }),
+        () => { D.achats.splice(Math.max(0, i), 0, a); afficherAchats(); });
     };
     k.appendChild(b);
     box.appendChild(k);
@@ -1230,7 +1256,7 @@ function afficherBilan() {
     cu.appendChild(el('div', 'ligne2', 'Estimation sur le chiffre d\'affaires encaissé. Le montant exact est celui de ta déclaration URSSAF.'));
   }
 
-  barres($('paiements'), D.parPaiement, m => ICONES_PAIEMENT[m] || '💰', 'Aucun encaissement cette année.');
+  barres($('paiements'), D.parPaiement, () => '', 'Aucun encaissement cette année.');
   barres($('categories'), D.parCategorie, iconeCat, 'Aucun achat enregistré cette année. Ajoute-les dans l\'onglet 🧾 Achats.');
 
   const lignesAn = D.journal.filter(r => anneeDe(r) === D.annee);
@@ -1592,16 +1618,16 @@ function carteRdv(r, compacte) {
   const l1 = el('div', 'ligne1'); l1.appendChild(el('span', '', r.client));
   if (r.statut === 'fait') l1.appendChild(el('span', 'badge', '✓ Encaissé'));
   else if (r.statut === 'annulé') l1.appendChild(el('span', 'badge badge-gris', 'Annulé'));
-  else if (r.rappel) l1.appendChild(el('span', 'badge badge-gris', '📩 Rappel envoyé'));
+  else if (r.rappel) l1.appendChild(el('span', 'badge badge-gris', '✓ Rappel envoyé'));
   c.appendChild(l1);
   const det = [r.prestation, dureeTexte(r.duree), r.note].filter(Boolean).join(' · ');
   if (det) c.appendChild(el('div', 'ligne2', det));
   const act = el('div', 'actions');
   if (r.statut === 'prévu') {
-    if (r.iso <= D.aujourdHuiIso) { const b = el('button', 'lien', '💶 Encaisser'); b.onclick = () => encaisserRdv(r); act.appendChild(b); }
-    if (r.iso >= D.aujourdHuiIso) act.appendChild(lienRappel(r, r.rappel ? '📩 Renvoyer' : '📩 Rappel SMS'));
+    if (r.iso <= D.aujourdHuiIso) { const b = avecIco(el('button', 'lien', 'Encaisser'), 'portefeuille'); b.onclick = () => encaisserRdv(r); act.appendChild(b); }
+    if (r.iso >= D.aujourdHuiIso) act.appendChild(avecIco(lienRappel(r, r.rappel ? 'Renvoyer le rappel' : 'Rappel SMS'), 'message'));
   }
-  if (!compacte || r.statut !== 'prévu') { const b = el('button', 'lien', '✏️ Modifier'); b.onclick = () => ouvrirRdv(r); act.appendChild(b); }
+  if (!compacte || r.statut !== 'prévu') { const b = avecIco(el('button', 'lien', 'Modifier'), 'crayon'); b.onclick = () => ouvrirRdv(r); act.appendChild(b); }
   if (act.children.length) c.appendChild(act);
   k.appendChild(h); k.appendChild(c);
   return k;
@@ -1623,7 +1649,7 @@ function carteRappels(zone) {
   if (!liste.length) return;
   const restants = liste.filter(r => !r.rappel).length;
   const k = el('div', 'carte rappels');
-  const l1 = el('div', 'ligne1'); l1.appendChild(el('span', '', '📩 Rappels pour demain')); l1.appendChild(el('span', 'badge' + (restants ? ' badge-alerte' : ''), restants ? restants + ' à envoyer' : 'Tous envoyés ✓'));
+  const l1 = el('div', 'ligne1'); l1.appendChild(avecIco(el('span', 'titre-ico', 'Rappels pour demain'), 'message')); l1.appendChild(el('span', 'badge' + (restants ? ' badge-alerte' : ''), restants ? restants + ' à envoyer' : 'Tous envoyés ✓'));
   k.appendChild(l1);
   k.appendChild(el('div', 'ligne2', 'Touche un nom : le SMS s\'ouvre avec le message déjà écrit, il ne reste qu\'à l\'envoyer.'));
   const z = el('div', 'liens-clientes');
@@ -1660,7 +1686,7 @@ function afficherAgenda() {
     b.appendChild(el('small', '', j.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')));
     b.appendChild(el('b', '', String(j.getDate())));
     b.appendChild(el('i', nb ? 'plein' : '', nb ? String(nb) : ''));
-    b.onclick = () => { jourAgenda = iso; afficherAgenda(); };
+    b.onclick = () => { jourAgenda = iso; modeAgenda = 'jour'; afficherAgenda(); };
     z.appendChild(b);
   }
   const liste = agenda().filter(r => r.iso === jourAgenda);
@@ -1671,11 +1697,12 @@ function afficherAgenda() {
   if (!liste.length) box.appendChild(el('p', 'discret', 'Aucun rendez-vous ce jour-là.'));
   liste.forEach(r => box.appendChild(carteRdv(r, false)));
   carteRappels($('rappelsAgenda'));
+  afficherSemaine(lundi);
 }
 
 /* Fenêtre de rendez-vous */
 let rdvChoisis = [];
-function ouvrirRdv(r) {
+function ouvrirRdv(r, pre) {
   rdvEdition = r || null;
   $('rdvTitre').textContent = r ? 'Modifier le rendez-vous' : 'Nouveau rendez-vous';
   $('rdvSupprimer').classList.toggle('cache', !r);
@@ -1686,6 +1713,7 @@ function ouvrirRdv(r) {
   $('rdvClient').value = r ? r.client : '';
   $('rdvDate').value = r ? r.iso : (jourAgenda || D.aujourdHuiIso);
   $('rdvHeure').value = r ? r.heure : '';
+  if (pre) { $('rdvDate').value = pre.date; $('rdvHeure').value = pre.heure; }
   $('rdvNote').value = r ? r.note : '';
   $('rdvPrestation').value = r ? r.prestation : '';
   rdvChoisis = r ? String(r.prestation).split(' + ').filter(n => D.tarifs.some(t => t.nom === n)) : [];
@@ -1704,7 +1732,7 @@ function ouvrirRdv(r) {
   });
   $('modaleRdv').classList.remove('cache');
   document.body.style.overflow = 'hidden';
-  if (!r) setTimeout(() => $('rdvClient').focus(), 100);
+  if (!r) setTimeout(() => $('rdvClient').focus(), 320);
 }
 function fermerRdv() { $('modaleRdv').classList.add('cache'); document.body.style.overflow = ''; rdvEdition = null; }
 
@@ -1726,16 +1754,22 @@ function sauverRdv() {
   fermerRdv();
   jourAgenda = r.date;
   envoyerRdv(r);
+  vibrer(14);
   message('📅 Rendez-vous enregistré : ' + r.client + ', ' + jourLong(r.date) + ' à ' + heureTexte(r.heure) + '.');
   if (vueActive !== 'agenda' && vueActive !== 'accueil') vue('agenda');
 }
 
 function supprimerRdv() {
   const r = rdvEdition;
-  if (!r || !confirm('Supprimer le rendez-vous de ' + r.client + ' (' + jourLong(r.iso) + ' à ' + heureTexte(r.heure) + ') ?')) return;
+  if (!r) return;
+  if (abonnementBloque()) return afficherPaywall();
   fermerRdv();
-  envoyerRdv({ id: r.id }, true);
-  message('🗑 Rendez-vous supprimé.');
+  const i = agenda().indexOf(r);
+  const majVues = () => { if (vueActive === 'agenda') afficherAgenda(); if (vueActive === 'accueil') afficherAccueil(); };
+  actionAnnulable('Rendez-vous de ' + r.client + ' supprimé',
+    () => { D.agenda = agenda().filter(x => x !== r); majVues(); },
+    () => envoyerRdv({ id: r.id }, true),
+    () => { D.agenda.splice(Math.max(0, i), 0, r); majVues(); });
 }
 
 /** « Encaisser » : ouvre une nouvelle prestation déjà remplie avec le rendez-vous. */
@@ -2085,6 +2119,357 @@ function verifierPaiement(silencieux) {
     })
     .catch(e => { if (!silencieux) erreur(e); });
 }
+
+/* ======================= ERGONOMIE ET DESIGN ======================= */
+
+/* ---------- Icônes (même style que le menu) ---------- */
+const ICO = {
+  crayon: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  message: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+  tel: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
+  portefeuille: '<path d="M19 7V5.5A1.5 1.5 0 0 0 17.5 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3"/><path d="M3 6.5A2 2 0 0 0 5 8h15a1 1 0 0 1 1 1v3h-4a2 2 0 0 0 0 4h4"/>',
+  especes: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/>',
+  carte: '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6.5 15h4"/>',
+  mobile: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18h2"/>',
+  recu: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+  banque: '<path d="M3 10l9-6 9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18"/>',
+  inconnu: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5h.01"/>',
+  etoile: '<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/>',
+  ticket: '<path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4z"/><path d="M14 6v2M14 11v2M14 16v2"/>',
+  oeil: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  relance: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+  etincelles: '<path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z"/>',
+  repeter: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>',
+  poubelle: '<path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/><path d="M10 11v6M14 11v6"/>',
+  agenda: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+};
+function ico(nom) {
+  const s = el('span', 'ico');
+  s.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICO[nom] || '') + '</svg>';
+  return s;
+}
+function avecIco(e, nom) { e.insertBefore(ico(nom), e.firstChild); e.classList.add('avec-ico'); return e; }
+const ICO_PAIEMENT = { 'Espèces': 'especes', 'Carte': 'carte', 'Wero': 'mobile', 'Chèque': 'recu', 'Virement': 'banque', 'Autre': 'mobile', 'Non renseigné': 'inconnu' };
+
+/* ---------- Petite vibration de confirmation (Android) ---------- */
+function vibrer(ms) { try { if (navigator.vibrate) navigator.vibrate(ms || 12); } catch (e) { /* non disponible */ } }
+
+/* ---------- Pastilles avec initiales ---------- */
+function initiales(nom) {
+  const m = String(nom || '').trim().split(' ').filter(Boolean);
+  return ((m[0] || '?').charAt(0) + (m[1] ? m[1].charAt(0) : '')).toUpperCase();
+}
+function teinteNom(nom) { let h = 0; for (const ch of norm(nom)) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; }
+function avatar(nom, grand) {
+  const a = el('span', 'avatar' + (grand ? ' grand' : ''), initiales(nom));
+  a.style.background = 'hsl(' + teinteNom(nom) + ' 52% 47%)';
+  a.setAttribute('aria-hidden', 'true');
+  return a;
+}
+
+/* ---------- Annuler au lieu de confirmer ---------- */
+let annulationEnCours = null;
+function actionAnnulable(texte, appliquer, valider, retablir) {
+  finirAnnulation();
+  appliquer();
+  vibrer(10);
+  const a = { valider, retablir, t: setTimeout(finirAnnulation, 5000) };
+  annulationEnCours = a;
+  const m = $('msg'); m.innerHTML = '';
+  m.appendChild(el('span', 'msg-texte', texte));
+  const b = el('button', 'msg-annuler', 'Annuler');
+  b.onclick = () => {
+    if (annulationEnCours !== a) return;
+    clearTimeout(a.t); annulationEnCours = null; m.style.display = 'none';
+    a.retablir(); message('↩︎ Annulé.', 1800);
+  };
+  m.appendChild(b); m.style.display = 'flex';
+  clearTimeout(m._t); m._t = setTimeout(() => { m.style.display = 'none'; }, 5000);
+}
+function finirAnnulation() { const a = annulationEnCours; if (!a) return; annulationEnCours = null; clearTimeout(a.t); a.valider(); }
+window.addEventListener('pagehide', finirAnnulation);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') finirAnnulation(); });
+function rafraichirApresLocal() { rafraichir(); if (vueActive === 'fiche' && ficheCle) ouvrirFiche(ficheCle, true); }
+
+/* ---------- Saisie éclair : « Comme la dernière fois » et prestations les plus faites en premier ---------- */
+function derniereVisite(cle) {
+  for (let i = D.journal.length - 1; i >= 0; i--) if (D.journal[i].cle === cle) return D.journal[i];
+  return null;
+}
+function frequencePrestations() {
+  const f = {};
+  D.journal.slice(-300).forEach(r => String(r.prestation || '').split(' + ').forEach(n => { f[n] = (f[n] || 0) + 1; }));
+  return f;
+}
+function tarifsTries() {
+  if (D.journal.length < 10) return D.tarifs;
+  const f = frequencePrestations();
+  return D.tarifs.map((t, i) => ({ t, i })).sort((a, b) => (f[b.t.nom] || 0) - (f[a.t.nom] || 0) || a.i - b.i).map(x => x.t);
+}
+const boutonsPrestas = () => Array.from(document.querySelectorAll('#prestations .presta, #options .presta, #choixDeplacement .presta'));
+function afficherDejaFait() {
+  const z = $('dejaFait'); z.innerHTML = '';
+  const r = cliente && !cliente.nouvelle && !GENERIQUES.includes(cliente.cle) && derniereVisite(cliente.cle);
+  if (!r) return;
+  const noms = String(r.prestation || '').split(' + ').filter(n => boutonsPrestas().some(b => b.firstChild && b.firstChild.nodeValue === n));
+  if (!noms.length) return;
+  const b = el('button', 'deja-fait');
+  b.appendChild(ico('repeter'));
+  const t = el('span', 'deja-texte');
+  t.appendChild(el('b', '', 'Comme la dernière fois'));
+  t.appendChild(el('small', '', noms.join(' + ') + (r.paiement && mod('paiement') ? ' · ' + r.paiement : '') + ' · ' + r.date));
+  b.appendChild(t);
+  b.onclick = () => reprendre(noms, r.paiement);
+  z.appendChild(b);
+}
+function reprendre(noms, paiement) {
+  boutonsPrestas().filter(b => b.classList.contains('on')).forEach(b => b.click());
+  noms.forEach(n => { const b = boutonsPrestas().find(x => x.firstChild && x.firstChild.nodeValue === n); if (b && !b.classList.contains('on')) b.click(); });
+  if (paiement && mod('paiement')) { const p = Array.from(document.querySelectorAll('#choixPaiement .puce')).find(x => x.dataset.mode === paiement); if (p) p.click(); }
+  vibrer(10);
+  message('✓ Repris : ' + noms.join(' + ') + '. Vérifie le prix puis enregistre.', 3000);
+}
+
+/* ---------- Gestes : glisser une fiche ---------- */
+function glissable(carte, gauche, droite) {
+  const w = el('div', 'glisse');
+  const fond = el('div', 'glisse-fond');
+  const zD = el('div', 'glisse-droite');
+  if (droite) { zD.appendChild(ico(droite.ico)); zD.appendChild(el('span', '', droite.txt)); }
+  const zG = el('div', 'glisse-gauche');
+  gauche.forEach(a => {
+    const x = el(a.href ? 'a' : 'button', 'glisse-action ' + (a.cls || ''));
+    if (a.href) x.href = a.href; else x.onclick = a.action;
+    x.appendChild(ico(a.ico)); x.appendChild(el('span', '', a.txt));
+    zG.appendChild(x);
+  });
+  fond.appendChild(zD); fond.appendChild(zG);
+  w.appendChild(fond); w.appendChild(carte);
+  const largeurG = gauche.length * 78;
+  let x0 = 0, y0 = 0, dx = 0, sens = null, ouvert = 0, glisse = false;
+  const poser = v => { carte.style.transform = v ? 'translateX(' + v + 'px)' : ''; };
+  carte.addEventListener('touchstart', e => {
+    const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; sens = null; glisse = false; dx = ouvert;
+    carte.style.transition = 'none';
+  }, { passive: true });
+  carte.addEventListener('touchmove', e => {
+    const t = e.touches[0], ddx = t.clientX - x0, ddy = t.clientY - y0;
+    if (sens === null) {
+      if (Math.abs(ddx) < 8 && Math.abs(ddy) < 8) return;
+      sens = Math.abs(ddx) > Math.abs(ddy) * 1.3 ? 'h' : 'v';
+      if (sens === 'h') fermerGlisses(w);
+    }
+    if (sens !== 'h') return;
+    glisse = true;
+    dx = ouvert + ddx;
+    if (!droite && dx > 0) dx = 0;
+    if (!gauche.length && dx < 0) dx = 0;
+    if (dx < -largeurG) dx = -largeurG + (dx + largeurG) / 3;
+    w.classList.toggle('vers-droite', dx > 0);
+    w.classList.toggle('pret', dx > 90);
+    poser(dx);
+  }, { passive: true });
+  carte.addEventListener('touchend', () => {
+    carte.style.transition = '';
+    if (sens !== 'h') return;
+    if (dx > 90 && droite) { vibrer(12); ouvert = 0; poser(0); setTimeout(droite.action, 150); }
+    else if (gauche.length && dx < -largeurG / 2) { ouvert = -largeurG; poser(ouvert); vibrer(6); }
+    else { ouvert = 0; poser(0); }
+    w.classList.remove('pret');
+  });
+  carte.addEventListener('click', e => {
+    if (glisse || ouvert) {
+      e.stopImmediatePropagation(); e.preventDefault();
+      if (!glisse && ouvert) { ouvert = 0; poser(0); }
+      glisse = false;
+    }
+  }, true);
+  w._fermer = () => { if (ouvert) { ouvert = 0; poser(0); } };
+  return w;
+}
+function fermerGlisses(sauf) { document.querySelectorAll('.glisse').forEach(g => { if (g !== sauf && g._fermer) g._fermer(); }); }
+function prestationPour(c) {
+  if (abonnementBloque()) return afficherPaywall();
+  nouvelleSaisie(); choisirCliente(c); vue('nouvelle');
+}
+
+/* ---------- Recherche globale (accueil) ---------- */
+function ligneResultat(icone, titre, sous, action) {
+  const b = el('button', 'resultat');
+  b.appendChild(icone);
+  const t = el('span', 'resultat-texte'); t.appendChild(el('b', '', titre)); if (sous) t.appendChild(el('small', '', sous));
+  b.appendChild(t); b.appendChild(el('span', 'chevron', '›'));
+  b.onclick = action;
+  return b;
+}
+function videRecherche() { const i = $('rechercheGlobale'); if (i.value) { i.value = ''; rechercheGlobale(); } }
+function rechercheGlobale() {
+  const brut = $('rechercheGlobale').value, q = norm(brut), z = $('resultatsGlobaux');
+  z.innerHTML = '';
+  z.classList.toggle('cache', !q);
+  document.body.classList.toggle('recherche-active', !!q);
+  if (!q || !D) return;
+  const chiffres = brut.replace(/[^0-9]/g, '');
+  const clientes = D.clientes.filter(c => norm(c.nom).includes(q) || norm(c.nomFamille || '').includes(q) ||
+    (chiffres.length >= 3 && String(c.tel || '').replace(/[^0-9]/g, '').includes(chiffres))).slice(0, 6);
+  const rdv = agenda().filter(r => r.iso >= D.aujourdHuiIso && r.statut !== 'annulé' && (norm(r.client).includes(q) || norm(r.prestation || '').includes(q))).slice(0, 4);
+  const saisies = D.journal.filter(r => norm(r.prestation || '').includes(q) || norm(r.client).includes(q) || r.date.includes(brut.trim())).slice(-5).reverse();
+  if (clientes.length) {
+    z.appendChild(el('div', 'resultats-titre', M('Clientes', 'Clients')));
+    clientes.forEach(c => z.appendChild(ligneResultat(avatar(c.nom), c.nom, infoCliente(c), () => { videRecherche(); ouvrirFiche(c.cle); })));
+  }
+  if (rdv.length) {
+    z.appendChild(el('div', 'resultats-titre', 'Rendez-vous à venir'));
+    rdv.forEach(r => z.appendChild(ligneResultat(ico('agenda'), r.client, jourLong(r.iso) + ' à ' + heureTexte(r.heure) + (r.prestation ? ' · ' + r.prestation : ''),
+      () => { videRecherche(); jourAgenda = r.iso; modeAgenda = 'jour'; vue('agenda'); ouvrirRdv(r); })));
+  }
+  if (saisies.length) {
+    z.appendChild(el('div', 'resultats-titre', 'Prestations'));
+    saisies.forEach(r => z.appendChild(ligneResultat(ico('recu'), r.client + ' · ' + (r.caApres !== null ? euros(r.caApres) : r.prixTexte), r.date + ' · ' + r.prestation,
+      () => ouvrirModification(r.id))));
+  }
+  if (!z.children.length) z.appendChild(el('p', 'discret', 'Aucun résultat pour « ' + brut.trim() + ' ».'));
+}
+
+/* ---------- Agenda : vue semaine ---------- */
+let modeAgenda = lsGet('mode_agenda') === 'semaine' ? 'semaine' : 'jour';
+const HEURE_PX = 44;
+function choisirModeAgenda(m) { modeAgenda = m; lsSet('mode_agenda', m); afficherAgenda(); }
+const heureCourte = h => String(h || '').replace(/^0/, '').replace(':00', ' h').replace(':', ' h ');
+function afficherSemaine(lundi) {
+  const g = $('grilleSemaine'), semaine = modeAgenda === 'semaine';
+  document.querySelectorAll('#modeAgenda button').forEach(b => b.classList.toggle('on', b.dataset.m === modeAgenda));
+  g.classList.toggle('cache', !semaine);
+  ['titreJour', 'listeRdv', 'btnRdvJour'].forEach(id => $(id).classList.toggle('cache', semaine));
+  if (!semaine) return;
+  g.innerHTML = '';
+  const jours = []; for (let i = 0; i < 7; i++) jours.push(isoPlus(lundi, i));
+  const rdvs = agenda().filter(r => jours.includes(r.iso) && r.statut !== 'annulé');
+  let hMin = 8, hMax = 20;
+  rdvs.forEach(r => { hMin = Math.min(hMin, Math.floor(minutes(r.heure) / 60)); hMax = Math.max(hMax, Math.ceil((minutes(r.heure) + (r.duree || 30)) / 60)); });
+  hMax = Math.min(hMax, 24);
+  const corps = el('div', 'sem-corps');
+  corps.style.height = (hMax - hMin) * HEURE_PX + 'px';
+  const heures = el('div', 'sem-heures');
+  for (let h = hMin; h < hMax; h++) { const x = el('div', 'sem-h', h + ' h'); x.style.top = (h - hMin) * HEURE_PX + 'px'; heures.appendChild(x); }
+  corps.appendChild(heures);
+  const maintenantMin = new Date().getHours() * 60 + new Date().getMinutes();
+  jours.forEach(iso => {
+    const col = el('div', 'sem-col' + (iso === D.aujourdHuiIso ? ' auj' : '') + (iso < D.aujourdHuiIso ? ' passe' : ''));
+    col.onclick = e => {
+      if (e.target !== col) return;
+      const m = hMin * 60 + Math.floor(e.offsetY / HEURE_PX * 2) * 30;
+      ouvrirRdv(null, { date: iso, heure: pad(Math.floor(m / 60) % 24) + ':' + pad(m % 60) });
+    };
+    if (iso === D.aujourdHuiIso && maintenantMin >= hMin * 60 && maintenantMin < hMax * 60) {
+      const n = el('div', 'sem-maintenant'); n.style.top = (maintenantMin - hMin * 60) / 60 * HEURE_PX + 'px'; col.appendChild(n);
+    }
+    rdvs.filter(r => r.iso === iso).forEach(r => {
+      const b = el('button', 'sem-rdv' + (r.statut === 'fait' ? ' fait' : ''));
+      b.style.top = (minutes(r.heure) - hMin * 60) / 60 * HEURE_PX + 'px';
+      b.style.height = Math.max(20, (r.duree || 30) / 60 * HEURE_PX - 2) + 'px';
+      b.appendChild(el('b', '', heureCourte(r.heure)));
+      b.appendChild(el('span', '', prenom(r.client)));
+      b.setAttribute('aria-label', r.client + ', ' + jourLong(r.iso) + ' à ' + heureTexte(r.heure));
+      b.onclick = () => ouvrirRdv(r);
+      col.appendChild(b);
+    });
+    corps.appendChild(col);
+  });
+  g.appendChild(corps);
+  const libres = jours.filter(iso => iso >= D.aujourdHuiIso).length;
+  g.appendChild(el('p', 'discret', libres ? 'Les zones vides sont libres : touche un créneau pour y ajouter un rendez-vous.' : 'Semaine passée.'));
+}
+
+/* ---------- Première ouverture : visite guidée en 3 bulles ---------- */
+let visiteLancee = false;
+function lancerVisite(force) {
+  const cle = 'visite_' + (SALON || 'api');
+  if (!force && (visiteLancee || lsGet(cle) || !D || D.journal.length > 30)) return;
+  visiteLancee = true;
+  if (vueActive !== 'accueil') vue('accueil');
+  const etapes = [
+    { cible: '#t-nouvelle', titre: 'Enregistre une prestation', texte: 'Touche + après chaque rendez-vous : ' + M('la cliente', 'le client') + ', la prestation, le prix, c\'est fini. Un nouveau prénom crée la fiche tout seul.' },
+    { cible: '#t-clientes', titre: M('Tes clientes', 'Tes clients'), texte: 'Fiches, fidélité, anniversaires. Astuce : glisse une fiche vers la droite pour une prestation, vers la gauche pour appeler.' },
+    { cible: '.appbar-bouton', titre: 'Réglages et outils', texte: 'Ton logo, ta couleur, tes tarifs, l\'import de tes contacts et le livre des recettes sont rangés ici.' },
+  ];
+  let i = 0;
+  const voile = el('div', 'visite'), trou = el('div', 'visite-trou'), bulle = el('div', 'visite-bulle');
+  voile.appendChild(trou); voile.appendChild(bulle); document.body.appendChild(voile);
+  const fin = () => { lsSet(cle, '1'); voile.remove(); window.removeEventListener('resize', placer); };
+  function placer() {
+    const e = etapes[i], c = document.querySelector(e.cible);
+    if (!c) return fin();
+    const r = c.getBoundingClientRect(), m = 6;
+    Object.assign(trou.style, { left: (r.left - m) + 'px', top: (r.top - m) + 'px', width: (r.width + 2 * m) + 'px', height: (r.height + 2 * m) + 'px' });
+    bulle.innerHTML = '';
+    bulle.appendChild(el('div', 'visite-etape', (i + 1) + ' / ' + etapes.length));
+    bulle.appendChild(el('b', '', e.titre));
+    bulle.appendChild(el('p', '', e.texte));
+    const act = el('div', 'visite-actions');
+    const passer = el('button', 'lien', 'Passer'); passer.onclick = fin;
+    const suiv = el('button', 'visite-suivant', i < etapes.length - 1 ? 'Suivant' : 'C\'est parti !');
+    suiv.onclick = () => { i++; if (i >= etapes.length) fin(); else placer(); };
+    act.appendChild(i < etapes.length - 1 ? passer : el('span')); act.appendChild(suiv); bulle.appendChild(act);
+    const enBas = r.top > window.innerHeight / 2;
+    bulle.style.top = enBas ? '' : (r.bottom + 16) + 'px';
+    bulle.style.bottom = enBas ? (window.innerHeight - r.top + 16) + 'px' : '';
+  }
+  window.addEventListener('resize', placer);
+  placer();
+}
+
+/* ---------- Transitions entre écrans ---------- */
+const PROFONDEUR = { plus: 1, fiche: 1, recettes: 1, stats: 1, reglages: 2, import: 2, abonnement: 2, tarifs: 2, offres: 2, achats: 2 };
+const ORDRE_ONGLETS = ['accueil', 'agenda', 'nouvelle', 'clientes', 'bilan'];
+function sensTransition(de, vers) {
+  if (de === vers) return '';
+  const a = PROFONDEUR[de] || 0, b = PROFONDEUR[vers] || 0;
+  if (b > a) return 'droite';
+  if (b < a) return 'gauche';
+  const i = ORDRE_ONGLETS.indexOf(de), j = ORDRE_ONGLETS.indexOf(vers);
+  if (i >= 0 && j >= 0) return j > i ? 'droite' : 'gauche';
+  return '';
+}
+function animerEcran(s, sens) {
+  s.classList.remove('va-droite', 'va-gauche');
+  if (!sens) return;
+  void s.offsetWidth;
+  s.classList.add('va-' + sens);
+}
+
+/* ---------- Fenêtres du bas : glisser vers le bas pour fermer ---------- */
+function feuilleGlissable(idModale, fermer) {
+  const f = $(idModale).querySelector('.feuille');
+  let y0 = null, dy = 0;
+  f.addEventListener('touchstart', e => {
+    const surPoignee = !!e.target.closest('.feuille-poignee');
+    if ((!surPoignee && f.scrollTop > 0) || e.target.closest('input, select, textarea')) { y0 = null; return; }
+    y0 = e.touches[0].clientY; dy = 0; f.style.transition = 'none';
+  }, { passive: true });
+  f.addEventListener('touchmove', e => {
+    if (y0 === null) return;
+    dy = Math.max(0, e.touches[0].clientY - y0);
+    f.style.transform = dy ? 'translateY(' + dy + 'px)' : '';
+  }, { passive: true });
+  f.addEventListener('touchend', () => {
+    if (y0 === null) return;
+    y0 = null; f.style.transition = '';
+    if (dy > 110) { f.style.transform = 'translateY(100%)'; vibrer(8); setTimeout(() => { fermer(); f.style.transform = ''; }, 200); }
+    else f.style.transform = '';
+  });
+}
+feuilleGlissable('modale', fermerModale);
+feuilleGlissable('modaleRdv', fermerRdv);
+
+/* ---------- En-tête qui rétrécit en faisant défiler ---------- */
+let enteteCompact = false;
+window.addEventListener('scroll', () => {
+  const y = window.scrollY;
+  if (!enteteCompact && y > 60) { enteteCompact = true; document.body.classList.add('entete-compact'); }
+  else if (enteteCompact && y < 8) { enteteCompact = false; document.body.classList.remove('entete-compact'); }
+}, { passive: true });
 
 /* ---------- Démarrage ---------- */
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { /* facultatif */ });
