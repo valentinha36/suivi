@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=23">
+<link rel="stylesheet" href="style.css?v=24">
 <style>
   .intro { background: var(--degrade); color: #fff; border-radius: 24px; padding: 24px 20px; box-shadow: var(--ombre-forte); margin-bottom: 16px; }
   .intro h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; margin: 0 0 8px; line-height: 1.2; }
@@ -128,9 +128,10 @@ var SERVEUR = 'https://script.google.com/macros/s/AKfycbxWejimyOL5FGpNqy3qYO6JLQ
 var METIERS = [['Onglerie', '💅'], ['Coiffure et barbier', '✂️'], ['Esthétique', '🌸'], ['Bien-être', '🌿'], ['Tatouage et piercing', '✒️'],
   ['Sport et coaching', '🏋️'], ['Cours et formation', '📚'], ['Services aux animaux', '🐾'], ['Services à domicile', '🏠'],
   ['Couture et retouches', '🧵'], ['Photographie', '📷'], ['Conseil et accompagnement', '🧭'], ['Transport de personnes', '🚗']];
-var metier = '', mot = '', couleur = 'Prune et rose', debut = Date.now(), resultat = null;
+var metier = '', mot = '', couleur = 'SoRyo', debut = Date.now(), resultat = null;
 // Couleurs de l'application : [accent, foncé, moyen, clair] (mêmes thèmes que l'application)
 var COULEURS = {
+  'SoRyo': ['#2b2f3a', '#0e0f13', '#1d2027', '#efe9dc', '#14161c'],
   'Prune et rose': ['#d6457a', '#2d2140', '#6b2f5e', '#fbeef3', '#b23466'], 'Bleu nuit': ['#3b82c4', '#14284a', '#1e4f8a', '#e8f1fa', '#245f9e'],
   'Vert sauge': ['#6b9a7d', '#2f4a3c', '#4f7a62', '#ecf4ee', '#4f7a62'], 'Noir et or': ['#b08d57', '#111111', '#2b2420', '#f6f0e6', '#8a6b3c'],
   'Terracotta': ['#c8643b', '#5a2f22', '#9a4a30', '#fbede6', '#a14d2b'], 'Lavande': ['#8a74c9', '#3a2f5e', '#6a5aa8', '#f1edfb', '#6a58ac'],
@@ -142,6 +143,7 @@ function appliquerCouleur(nom) {
   st.setProperty('--degrade', 'linear-gradient(135deg, ' + t[1] + ' 0%, ' + t[2] + ' 55%, ' + t[0] + ' 100%)');
   st.setProperty('--degrade-bouton', 'linear-gradient(135deg, ' + t[0] + ' 0%, ' + t[4] + ' 100%)');
   var m = document.querySelector('meta[name=theme-color]'); if (m) m.content = t[1];
+  document.body.classList.toggle('theme-soryo', nom === 'SoRyo');
 }
 Object.keys(COULEURS).forEach(function (nom) {
   var b = document.createElement('button'); b.className = 'puce' + (nom === couleur ? ' on' : '');
@@ -150,6 +152,7 @@ Object.keys(COULEURS).forEach(function (nom) {
   b.onclick = function () { couleur = nom; appliquerCouleur(nom); document.querySelectorAll('#couleurs .puce').forEach(function (x) { x.classList.toggle('on', x === b); }); };
   $('couleurs').appendChild(b);
 });
+appliquerCouleur(couleur);
 function $(id) { return document.getElementById(id); }
 
 METIERS.forEach(function (m) {

@@ -3,12 +3,12 @@
    --prune (foncé), --rose (accent), --rose-2 (accent clair), --rose-clair (fond teinté),
    --degrade (en-têtes), --degrade-bouton (boutons). */
 :root {
-  --prune: #3b2a4f;
-  --rose: #d6457a;
-  --rose-2: #ee7aa2;
-  --rose-clair: #fbeef3;
-  --degrade: linear-gradient(135deg, #2d2140 0%, #6b2f5e 55%, #d6457a 100%);
-  --degrade-bouton: linear-gradient(135deg, #d6457a 0%, #b23466 100%);
+  --prune: #14161c;
+  --rose: #2b2f3a;
+  --rose-2: #6b6f7a;
+  --rose-clair: #efe9dc;
+  --degrade: linear-gradient(135deg, #0e0f13 0%, #1d2027 55%, #2b2f3a 100%);
+  --degrade-bouton: linear-gradient(135deg, #2b2f3a 0%, #14161c 100%);
   --vert: #138a5b;
   --vert-clair: #e6f5ee;
   --rouge: #c8333d;
@@ -663,6 +663,25 @@ body.entete-compact .bandeau { top: 62px; }
   .segment { background: #24212b; }
   .segment button.on { background: #3d3947; color: #fff; }
   .sem-rdv { background: color-mix(in srgb, var(--rose) 80%, #000); }
+}
+
+/* ---------- Thème SoRyo (noir, anthracite, crème) ---------- */
+body.theme-soryo .msg-annuler { color: #e9dfc8; }
+@media (prefers-color-scheme: dark) {
+  /* En sombre, l'accent devient crème pour rester lisible sur le fond noir */
+  body.theme-soryo {
+    --rose: #e3dac6; --rose-2: #b9b09e; --puce-on: #e3dac6;
+    --teinte: color-mix(in srgb, #e3dac6 13%, #1b1920);
+    --degrade: linear-gradient(135deg, #1d1f25 0%, #272a32 55%, #353945 100%);
+    --degrade-bouton: linear-gradient(135deg, #f1ebdf 0%, #d9cfba 100%);
+  }
+  body.theme-soryo .gros:not(.secondaire), body.theme-soryo .navbar .fab, body.theme-soryo .visite-suivant,
+  body.theme-soryo .puce.on, body.theme-soryo .jour.on, body.theme-soryo .sem-rdv, body.theme-soryo .glisse-droite { color: #14161c; }
+  body.theme-soryo .jour.on small { color: rgba(20, 22, 28, .7); }
+  body.theme-soryo .jour.on i.plein { background: rgba(20, 22, 28, .15); color: #14161c; }
+  body.theme-soryo .presta.on::after { color: #14161c; }
+  body.theme-soryo .sem-rdv { background: #e3dac6; }
+  body.theme-soryo .appbar, body.theme-soryo .hero, body.theme-soryo .fiche-entete { border: 1px solid #2f323b; }
 }
 
 /* ---------- Mode sombre (suit le réglage du téléphone) ---------- */

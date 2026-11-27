@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=23">
+<link rel="stylesheet" href="style.css?v=24">
 <style>
   body { padding-bottom: 40px; }
   main { max-width: 900px; }
@@ -163,7 +163,7 @@
 'use strict';
 var SERVEUR = 'https://script.google.com/macros/s/AKfycbxWejimyOL5FGpNqy3qYO6JLQZswiVAsl_CDho2ueERr3MP3WwFob3f8E_UDSnLzZQE/exec';
 var MOIS_C = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
-var THEMES = { 'Prune et rose': ['#d6457a', '#2d2140', '#6b2f5e', '#fbeef3', '#b23466'], 'Bleu nuit': ['#3b82c4', '#14284a', '#1e4f8a', '#e8f1fa', '#245f9e'],
+var THEMES = { 'SoRyo': ['#2b2f3a', '#0e0f13', '#1d2027', '#efe9dc', '#14161c'], 'Prune et rose': ['#d6457a', '#2d2140', '#6b2f5e', '#fbeef3', '#b23466'], 'Bleu nuit': ['#3b82c4', '#14284a', '#1e4f8a', '#e8f1fa', '#245f9e'],
   'Vert sauge': ['#6b9a7d', '#2f4a3c', '#4f7a62', '#ecf4ee', '#4f7a62'], 'Noir et or': ['#b08d57', '#111111', '#2b2420', '#f6f0e6', '#8a6b3c'],
   'Terracotta': ['#c8643b', '#5a2f22', '#9a4a30', '#fbede6', '#a14d2b'], 'Lavande': ['#8a74c9', '#3a2f5e', '#6a5aa8', '#f1edfb', '#6a58ac'] };
 var ICONES = ['📊', '💼', '🚀', '💎', '⭐', '🌸', '✂️', '💅', '🐾', '🔥', '👑', '🦁'];
@@ -186,7 +186,8 @@ var ABO = { essai: ['Essai', 'calme'], actif: ['Abonné', 'actif'], annule_fin: 
   impaye: ['Impayé', 'bloque'], annule: ['Résilié', 'bloque'], gratuit: ['Gratuit', 'neutre'] };
 
 function appliquerTheme(r) {
-  var t = THEMES[r.couleur] || THEMES['Prune et rose'], st = document.documentElement.style;
+  var t = THEMES[r.couleur] || THEMES['SoRyo'], st = document.documentElement.style;
+  document.body.classList.toggle('theme-soryo', !THEMES[r.couleur] || r.couleur === 'SoRyo');
   st.setProperty('--rose', t[0]); st.setProperty('--rose-clair', t[3]); st.setProperty('--prune', t[2]);
   st.setProperty('--degrade', 'linear-gradient(135deg, ' + t[1] + ' 0%, ' + t[2] + ' 55%, ' + t[0] + ' 100%)');
   st.setProperty('--degrade-bouton', 'linear-gradient(135deg, ' + t[0] + ' 0%, ' + t[4] + ' 100%)');

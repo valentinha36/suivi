@@ -319,6 +319,7 @@ function vue(v) {
   fermerGlisses();
   Object.keys(ONGLET_DE).forEach(x => $('v-' + x).classList.toggle('cache', x !== v));
   animerEcran($('v-' + v), sensTransition(avant, v));
+  if (avant === 'reglages' && v !== 'reglages') appliquerTheme();
   if (v !== 'accueil') videRecherche();
   ['accueil', 'agenda', 'clientes', 'nouvelle', 'bilan'].forEach(x => $('t-' + x).classList.toggle('actif', ONGLET_DE[v] === x));
   document.body.classList.toggle('en-saisie', v === 'nouvelle' && !$('formulaire').classList.contains('cache'));
@@ -638,14 +639,19 @@ const nomSalon = () => (D && D.reglages && D.reglages.nomSalon) || 'notre salon'
 
 /* Couleurs de l'application (réglage « Couleur de l'application ») */
 const THEMES = {
+  'SoRyo': ['#14161c', '#2b2f3a', '#6b6f7a', '#efe9dc', '#0e0f13', '#1d2027', '#14161c'],
+  'Prune et rose': ['#3b2a4f', '#d6457a', '#ee7aa2', '#fbeef3', '#2d2140', '#6b2f5e', '#b23466'],
   'Bleu nuit': ['#1e3a5f', '#3b82c4', '#6aa8dc', '#e8f1fa', '#14284a', '#1e4f8a', '#245f9e'],
   'Vert sauge': ['#3d5a4a', '#6b9a7d', '#93b89f', '#ecf4ee', '#2f4a3c', '#4f7a62', '#4f7a62'],
   'Noir et or': ['#1f1a17', '#b08d57', '#cfb27d', '#f6f0e6', '#111111', '#2b2420', '#8a6b3c'],
   'Terracotta': ['#6b3a2a', '#c8643b', '#e08b66', '#fbede6', '#5a2f22', '#9a4a30', '#a14d2b'],
   'Lavande': ['#4b3f72', '#8a74c9', '#ab9be0', '#f1edfb', '#3a2f5e', '#6a5aa8', '#6a58ac'],
 };
-function appliquerTheme() {
-  const t = THEMES[P().couleur], st = document.documentElement.style;
+/** Applique une couleur (celle des réglages par défaut, ou une couleur essayée dans l'écran Réglages). */
+function appliquerTheme(nom) {
+  const choix = THEMES[nom] ? nom : THEMES[P().couleur] ? P().couleur : 'SoRyo';
+  const t = THEMES[choix], st = document.documentElement.style;
+  if (document.body) document.body.classList.toggle('theme-soryo', choix === 'SoRyo');
   ['--prune', '--rose', '--rose-2', '--rose-clair', '--degrade', '--degrade-bouton'].forEach(v => st.removeProperty(v));
   let meta = '#5b2a4e';
   if (t) {
@@ -1788,13 +1794,13 @@ function encaisserRdv(r) {
 }
 
 /* ======================= RÉGLAGES (écran Plus → Réglages) ======================= */
-const COULEURS_APERCU = { 'Prune et rose': '#d6457a', 'Bleu nuit': '#3b82c4', 'Vert sauge': '#6b9a7d', 'Noir et or': '#b08d57', 'Terracotta': '#c8643b', 'Lavande': '#8a74c9' };
+const COULEURS_APERCU = { 'SoRyo': '#14161c', 'Prune et rose': '#d6457a', 'Bleu nuit': '#3b82c4', 'Vert sauge': '#6b9a7d', 'Noir et or': '#b08d57', 'Terracotta': '#c8643b', 'Lavande': '#8a74c9' };
 let regEdition = null;
 
 function afficherReglagesEcran() {
   if (!D || !D.reglages) return;
   const g = D.reglages, p = g.plus || {};
-  regEdition = { metier: g.metier, mot: g.mot, couleur: p.couleur || 'Prune et rose', modules: Object.assign({}, g.modules) };
+  regEdition = { metier: g.metier, mot: g.mot, couleur: p.couleur || 'SoRyo', modules: Object.assign({}, g.modules) };
   const z = $('formReglages'); z.innerHTML = '';
   const bloc = titre => { const b = el('div', 'carte'); b.appendChild(el('div', 'ligne1', titre)); z.appendChild(b); return b; };
   const champ = (parent, id, label, valeur, attrs, aide) => {
@@ -1825,7 +1831,8 @@ function afficherReglagesEcran() {
   // Apparence
   const b2 = bloc('Apparence');
   b2.appendChild(el('label', 'etiquette', 'Couleur'));
-  puces(b2, (g.themes || Object.keys(COULEURS_APERCU)).map(t => [t, t, COULEURS_APERCU[t]]), regEdition.couleur, v => { regEdition.couleur = v; });
+  puces(b2, (g.themes || Object.keys(COULEURS_APERCU)).map(t => [t, t, COULEURS_APERCU[t]]), regEdition.couleur, v => { regEdition.couleur = v; appliquerTheme(v); });
+  b2.appendChild(el('div', 'ligne2', 'La couleur s\'affiche tout de suite pour essayer. Elle est gardée quand tu enregistres.'));
   regEdition.logo = p.logo || '';
   b2.appendChild(el('label', 'etiquette', 'Logo (facultatif)'));
   const lz = el('div', 'logo-choix');
