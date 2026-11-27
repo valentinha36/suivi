@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=21">
+<link rel="stylesheet" href="style.css?v=22">
 </head>
 <body>
 <header class="appbar">
@@ -79,6 +79,7 @@
         Nouvelle prestation
       </button>
     </div>
+    <div id="carteAbo"></div>
     <div id="bienvenue"></div>
     <div id="carteObjectif" class="carte jauge cache"></div>
     <div class="raccourcis">
@@ -383,6 +384,11 @@
     <h1 class="titre-ecran">Plus</h1>
     <div class="carte salon-carte" id="infoSalon"></div>
     <div class="menu">
+      <button class="menu-ligne cache" id="menuAbo" onclick="vue('abonnement')">
+        <span class="menu-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2.5"></rect><path d="M2.5 10h19M6.5 15h4"></path></svg></span>
+        <span class="menu-texte"><b>Mon abonnement</b><small>Essai, paiement, factures</small></span>
+        <span class="chevron">›</span>
+      </button>
       <button class="menu-ligne" onclick="vue('reglages')">
         <span class="menu-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"></path><circle cx="16" cy="6" r="2"></circle><circle cx="10" cy="12" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg></span>
         <span class="menu-texte"><b>Réglages</b><small>Nom, métier, couleur, fonctions, code</small></span>
@@ -457,6 +463,13 @@
       <div class="ligne2" style="margin-top:12px">Fichiers acceptés : cartes de contact (.vcf, exportées depuis l'iPhone ou Google Contacts) ou tableau .csv (exporté d'Excel ou Google Sheets) avec une colonne Nom ou Prénom, et si possible Téléphone, Anniversaire, Notes.</div>
     </div>
     <div id="importApercu"></div>
+  </section>
+
+  <!-- ============ ABONNEMENT ============ -->
+  <section id="v-abonnement" class="cache">
+    <button class="lien retour" onclick="vue('plus')">← Plus</button>
+    <h1 class="titre-ecran">Mon abonnement</h1>
+    <div id="contenuAbo"></div>
   </section>
 
   <!-- ============ TARIFS ============ -->
@@ -604,6 +617,6 @@
   </button>
 </nav>
 <div id="msg" class="msg" role="status"></div>
-<script src="app.js?v=32"></script>
+<script src="app.js?v=33"></script>
 </body>
 </html>

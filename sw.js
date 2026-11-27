@@ -1,7 +1,7 @@
 /* Service worker : permet d'ouvrir l'application sans internet.
    Les pages viennent du réseau en priorité ; la copie gardée sert seulement hors connexion. */
-const CACHE = 'suivi-v35';
-const FICHIERS = ['./', './index.html', './app.js?v=32', './style.css?v=21', './manifest.json', './icon-192.png', './icon.svg'];
+const CACHE = 'suivi-v36';
+const FICHIERS = ['./', './index.html', './app.js?v=33', './style.css?v=22', './manifest.json', './icon-192.png', './icon.svg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FICHIERS)).then(() => self.skipWaiting()));

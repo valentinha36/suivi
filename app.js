@@ -9,6 +9,7 @@ const API_VALIDE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]{20,}\/exec$
 const SALON_VALIDE = /^[\w-]{25,80}$/;
 // Lien « nouveau code » reçu par e-mail (lu avant que l'adresse soit nettoyée)
 const RESET = (() => { try { const r = new URLSearchParams(location.search).get('reset') || ''; return /^[0-9a-f]{64}$/.test(r) ? r : ''; } catch (e) { return ''; } })();
+const RETOUR_PAIEMENT = (() => { try { return new URLSearchParams(location.search).get('abonnement') === 'ok'; } catch (e) { return false; } })();
 const { API, SALON } = (function () {
   let q = null;
   try { q = new URLSearchParams(location.search); } catch (e) { q = null; }
@@ -79,7 +80,10 @@ async function api(action, extra) {
   }
   let j;
   try { j = await r.json(); } catch (e) { const err = new Error('Réponse illisible, réessaie.'); err.horsLigne = true; throw err; }
-  if (!j.ok) throw new Error(j.erreur);
+  if (!j.ok) {
+    if (j.erreur === 'ABONNEMENT') { if (D && D.abonnement) D.abonnement.bloque = true; afficherPaywall(); throw new Error('Ton abonnement est terminé : tes données restent consultables. Abonne-toi pour enregistrer à nouveau.'); }
+    throw new Error(j.erreur);
+  }
   return j;
 }
 
@@ -225,6 +229,7 @@ function charger() {
     if (dejaAffiche) majTout(j.data);
     else { D = j.data; lsSet(CLE_DONNEES, JSON.stringify(D)); $('chargement').classList.add('cache'); init(); }
     envoyerAttente();
+    if (RETOUR_PAIEMENT && !paiementVerifie) { paiementVerifie = true; verifierPaiement(true); }
   }).catch(e => {
     majBandeauSync(false);
     if (e.message === 'PIN' || /essais/.test(e.message)) {
@@ -306,7 +311,7 @@ function rafraichir() {
 }
 
 /* Écrans et onglet du bas correspondant (les sous-écrans allument leur onglet parent) */
-const ONGLET_DE = { accueil: 'accueil', agenda: 'agenda', nouvelle: 'nouvelle', clientes: 'clientes', fiche: 'clientes', bilan: 'bilan', plus: '', reglages: '', import: '', tarifs: '', offres: '', achats: '', recettes: 'bilan', stats: 'bilan' };
+const ONGLET_DE = { accueil: 'accueil', agenda: 'agenda', nouvelle: 'nouvelle', clientes: 'clientes', fiche: 'clientes', bilan: 'bilan', plus: '', reglages: '', import: '', abonnement: '', tarifs: '', offres: '', achats: '', recettes: 'bilan', stats: 'bilan' };
 function vue(v) {
   vueActive = v;
   Object.keys(ONGLET_DE).forEach(x => $('v-' + x).classList.toggle('cache', x !== v));
@@ -317,6 +322,7 @@ function vue(v) {
   if (v === 'recettes') afficherRecettes();
   if (v === 'agenda') afficherAgenda();
   if (v === 'reglages') afficherReglagesEcran();
+  if (v === 'abonnement') afficherAbonnement();
   if (v === 'import') { $('importApercu').innerHTML = ''; const ok = 'contacts' in navigator && 'ContactsManager' in window; $('btnContacts').classList.toggle('cache', !ok); $('contactsIndispo').classList.toggle('cache', ok); }
   if (v === 'stats') afficherStats();
   window.scrollTo(0, 0);
@@ -324,6 +330,7 @@ function vue(v) {
 
 /** Bouton + du bas : ouvre une saisie (neuve si la précédente vient d'être enregistrée). */
 function ouvrirSaisie() {
+  if (abonnementBloque()) return afficherPaywall();
   if (!$('succes').classList.contains('cache')) nouvelleSaisie();
   vue('nouvelle');
 }
@@ -358,6 +365,7 @@ function afficherBienvenue() {
 
 function afficherAccueil() {
   if (!D) return;
+  afficherCarteAbo();
   afficherBienvenue();
   afficherRdvAccueil();
   const z = $('journee'); z.innerHTML = '';
@@ -549,6 +557,7 @@ function majResume() {
 }
 
 function enregistrer() {
+  if (abonnementBloque()) return afficherPaywall();
   if (!cliente) return message(M('👉 Choisis d\'abord la cliente (étape 1).', '👉 Choisis d\'abord le client (étape 1).'));
   if (!choisis.length) return message('👉 Choisis au moins une prestation (étape 2).');
   if ($('prix').value === '') return message('👉 Indique le prix (étape 3).');
@@ -666,6 +675,8 @@ const texteAvis = nom => 'Bonjour ' + prenom(nom) + ', merci pour votre visite c
 const texteRelance = nom => 'Bonjour ' + prenom(nom) + ', cela fait un moment ! Au plaisir de vous revoir chez ' + nomSalon() + '. Répondez à ce message pour prendre rendez-vous 😊';
 
 function appliquerReglages() {
+  const ab = D && D.abonnement;
+  $('menuAbo').classList.toggle('cache', !ab || ab.statut === 'gratuit');
   ['fidelite', 'offres', 'options', 'paiement', 'achats', 'fiche', 'heure']
     .forEach(k => document.body.classList.toggle('sans-' + k, !mod(k)));
   document.querySelectorAll('[data-mot]').forEach(e => { const [f, m] = e.dataset.mot.split('|'); e.textContent = estClient() ? m : f; });
@@ -1113,6 +1124,7 @@ function majTotalAchat() {
 }
 
 function enregistrerAchat() {
+  if (abonnementBloque()) return afficherPaywall();
   const libelle = $('achatLibelle').value.trim();
   const pu = nombre($('achatPrix').value), q = Number($('achatQte').value) || 1;
   if (!libelle) return message('👉 Indique ce que tu as acheté.');
@@ -1548,6 +1560,7 @@ function majAgenda(liste) {
 
 /** Applique tout de suite le changement sur le téléphone, puis l'envoie au Google Sheet (même sans réseau : envoi plus tard). */
 function envoyerRdv(r, supprimer) {
+  if (abonnementBloque()) return afficherPaywall();
   const l = agenda().slice(), i = l.findIndex(x => x.id === r.id);
   if (supprimer) { if (i >= 0) l.splice(i, 1); }
   else {
@@ -2002,6 +2015,75 @@ function validerImport() {
       vue('clientes');
     })
     .catch(e => { erreur(e.horsLigne ? 'Pas d\'internet : réessaie quand le réseau revient.' : e); b.disabled = false; b.textContent = 'Réessayer'; });
+}
+
+/* ======================= ABONNEMENT ======================= */
+let paiementVerifie = false;
+const abonnementBloque = () => !!(D && D.abonnement && D.abonnement.bloque);
+const LIBELLES_ABO = { essai: 'Essai gratuit', actif: 'Abonnement actif', annule_fin: 'Résilié (actif jusqu\'à la fin de la période)', expire: 'Essai terminé', impaye: 'Paiement en attente', annule: 'Abonnement terminé', gratuit: 'Gratuit' };
+const dateCourte = iso => iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+
+/** Carte sur l'accueil : jours d'essai restants, ou abonnement terminé. */
+function afficherCarteAbo() {
+  const z = $('carteAbo'); z.innerHTML = '';
+  const a = D.abonnement;
+  if (!a || a.statut === 'gratuit' || a.statut === 'actif') return;
+  if (a.statut === 'essai' && a.jours > 7) {
+    const p = el('div', 'abo-discret'); p.textContent = '🎁 Essai gratuit : encore ' + a.jours + ' jours · ';
+    const b = el('button', 'lien', 'En savoir plus'); b.onclick = () => vue('abonnement'); p.appendChild(b); z.appendChild(p);
+    return;
+  }
+  const k = el('div', 'carte abo-carte' + (a.bloque ? ' bloque' : ''));
+  k.appendChild(el('div', 'ligne1', a.bloque ? '🔒 ' + LIBELLES_ABO[a.statut] : '⏳ Essai gratuit : plus que ' + a.jours + ' jour' + (a.jours > 1 ? 's' : '')));
+  k.appendChild(el('div', 'ligne2', a.bloque
+    ? 'Tes données sont conservées : tu peux les consulter et les exporter. Abonne-toi pour enregistrer à nouveau.'
+    : 'Abonne-toi pour continuer à tout enregistrer après l\'essai (' + a.prix + ', sans engagement).'));
+  const b = el('button', 'gros', 'S\'abonner'); b.onclick = () => vue('abonnement'); k.appendChild(b);
+  z.appendChild(k);
+}
+
+function afficherPaywall() { if (D) vue('abonnement'); }
+
+function afficherAbonnement() {
+  const z = $('contenuAbo'); z.innerHTML = '';
+  const a = D.abonnement || { statut: 'gratuit' };
+  const k = el('div', 'carte');
+  const l1 = el('div', 'ligne1'); l1.appendChild(el('span', '', LIBELLES_ABO[a.statut] || a.statut));
+  l1.appendChild(el('span', 'badge' + (a.bloque ? ' badge-alerte' : ''), a.bloque ? 'Lecture seule' : 'Tout est ouvert'));
+  k.appendChild(l1);
+  if (a.statut === 'essai') k.appendChild(el('div', 'ligne2', 'Ton essai gratuit se termine le ' + dateCourte(a.fin) + ' (encore ' + a.jours + ' jour' + (a.jours > 1 ? 's' : '') + ').'));
+  if (a.statut === 'actif') k.appendChild(el('div', 'ligne2', 'Prochain renouvellement : ' + dateCourte(a.fin) + '. Merci pour ta confiance 💛'));
+  if (a.statut === 'annule_fin') k.appendChild(el('div', 'ligne2', 'Tout reste ouvert jusqu\'au ' + dateCourte(a.fin) + '.'));
+  if (a.bloque) k.appendChild(el('div', 'ligne2', 'Tes données sont conservées : clients, historique, bilan et livre des recettes restent consultables et exportables. Pour enregistrer à nouveau, abonne-toi.'));
+  z.appendChild(k);
+  if (a.statut !== 'actif' && a.statut !== 'gratuit') {
+    const o = el('div', 'carte abo-offre');
+    o.appendChild(el('div', 'abo-prix', a.prix || ''));
+    o.appendChild(el('div', 'ligne2', 'Sans engagement, résiliable à tout moment. Paiement sécurisé par Stripe : ta carte n\'est jamais vue par l\'application.'));
+    ['Clients, fidélité et carte de fidélité', 'Agenda et rappels SMS', 'Bilan, taux horaire et livre des recettes', 'Sauvegarde automatique chaque semaine']
+      .forEach(t => o.appendChild(el('div', 'abo-point', '✓ ' + t)));
+    if (a.lienPaiement) { const b = el('a', 'gros bouton-lien', 'S\'abonner'); b.href = a.lienPaiement; o.appendChild(b); }
+    else o.appendChild(el('p', 'discret', 'Le paiement en ligne arrive bientôt. En attendant, contacte la personne qui t\'a donné l\'application.'));
+    const v = el('button', 'lien', 'J\'ai déjà payé : vérifier'); v.style.display = 'block'; v.style.margin = '12px auto 0'; v.onclick = () => verifierPaiement(false);
+    o.appendChild(v);
+    z.appendChild(o);
+  }
+  if (a.lienPortail && (a.statut === 'actif' || a.statut === 'annule_fin' || a.statut === 'impaye')) {
+    const g = el('a', 'gros secondaire bouton-lien', 'Gérer mon abonnement (carte, factures, résiliation)'); g.href = a.lienPortail; g.target = '_blank'; g.rel = 'noopener';
+    z.appendChild(g);
+  }
+}
+
+function verifierPaiement(silencieux) {
+  if (!silencieux) message('⏳ Vérification du paiement…', 6000);
+  api('verifier_abonnement')
+    .then(j => {
+      if (j.data && j.data.abonnement) { D.abonnement = j.data.abonnement; lsSet(CLE_DONNEES, JSON.stringify(D)); }
+      if (j.data && j.data.trouve) { message('✅ Merci ! Ton abonnement est actif.', 5000); appliquerReglages(); vue('accueil'); }
+      else if (!silencieux) message('Paiement pas encore trouvé. S\'il vient d\'être fait, réessaie dans une minute.', 6000);
+      if (vueActive === 'abonnement') afficherAbonnement();
+    })
+    .catch(e => { if (!silencieux) erreur(e); });
 }
 
 /* ---------- Démarrage ---------- */

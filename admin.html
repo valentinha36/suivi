@@ -11,29 +11,46 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=21">
+<link rel="stylesheet" href="style.css?v=22">
 <style>
   body { padding-bottom: 40px; }
+  main { max-width: 900px; }
+  .appbar-texte { max-width: none; }
+  .onglets { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; }
   .chiffres { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
   @media (min-width: 640px) { .chiffres { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .stat small { display: block; font-size: 12px; font-weight: 500; color: var(--gris); text-transform: none; letter-spacing: 0; margin-top: 4px; }
   .etat { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
   .etat.actif { background: var(--vert-clair); color: var(--vert); }
   .etat.calme { background: var(--alerte-fond); color: var(--alerte-texte); }
-  .etat.endormi { background: var(--danger-clair); color: var(--rouge); }
-  .etat.jamais { background: var(--fond); color: var(--gris); }
+  .etat.endormi, .etat.bloque { background: var(--danger-clair); color: var(--rouge); }
+  .etat.jamais, .etat.neutre { background: var(--fond); color: var(--gris); }
+  .etats { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
   .salon .ligne2 a { color: var(--rose); font-weight: 600; text-decoration: none; }
   .mini { display: flex; align-items: flex-end; gap: 3px; height: 28px; margin-top: 10px; }
   .mini i { flex: 1; background: var(--rose); border-radius: 3px 3px 0 0; min-height: 2px; opacity: .85; }
   .mini i.vide { background: var(--trait); }
   .legende-mini { display: flex; justify-content: space-between; font-size: 11px; color: var(--gris); margin-top: 3px; }
+  .graph { display: flex; align-items: flex-end; gap: 6px; height: 140px; margin-top: 14px; }
+  .graph .col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; min-width: 0; }
+  .graph .col b { font-size: 11px; color: var(--texte-2); }
+  .graph .col i { width: 100%; max-width: 26px; background: var(--rose); border-radius: 4px 4px 0 0; min-height: 2px; }
+  .graph .col i.vide { background: var(--trait); }
+  .graph .col span { font-size: 10.5px; color: var(--gris); }
+  .actions-salon { display: flex; flex-wrap: wrap; gap: 0 16px; margin-top: 6px; }
+  .icones { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+  .icones button { font-size: 24px; height: 48px; border-radius: 12px; border: 1.5px solid var(--trait); background: var(--carte); cursor: pointer; }
+  .icones button.on { border-color: var(--rose); background: var(--teinte); }
+  .aide { font-size: 13px; color: var(--gris); margin-top: 6px; line-height: 1.45; }
+  .aide ol { padding-left: 18px; margin: 6px 0; }
 </style>
 </head>
 <body>
 <header class="appbar">
-  <div class="logo-entete logo-emoji" aria-hidden="true">📊</div>
+  <div class="logo-entete logo-emoji" id="iconeEntete" aria-hidden="true">📊</div>
   <div class="appbar-texte">
     <div class="titre">Tableau de bord</div>
-    <div class="sous" id="sous">Salons et activité</div>
+    <div class="sous" id="sous">Salons, inscriptions et abonnements</div>
   </div>
 </header>
 <main>
@@ -45,57 +62,147 @@
     <button class="gros" onclick="entrer()">Entrer</button>
   </section>
   <div id="chargement" class="chargement cache">Chargement…</div>
-  <section id="tableau" class="cache">
-    <div class="chiffres">
-      <div class="stat vedette">Salons<b id="nbSalons">0</b></div>
-      <div class="stat">Actifs (7 jours)<b id="nbActifs">0</b></div>
-      <div class="stat">Saisies ce mois<b id="nbMois">0</b></div>
-      <div class="stat">Jamais utilisés<b id="nbJamais">0</b></div>
+
+  <div id="tableau" class="cache">
+    <div class="onglets filtres" id="onglets">
+      <button class="puce on" data-o="vue">Vue d'ensemble</button>
+      <button class="puce" data-o="salons">Salons</button>
+      <button class="puce" data-o="reglages">Réglages</button>
     </div>
-    <div class="filtres" id="filtres">
-      <button class="puce on" data-f="tous">Tous</button>
-      <button class="puce" data-f="actif">Actifs</button>
-      <button class="puce" data-f="calme">Calmes</button>
-      <button class="puce" data-f="endormi">À relancer</button>
-      <button class="puce" data-f="jamais">Jamais utilisés</button>
-    </div>
-    <div id="liste" style="margin-top:12px"></div>
-    <p class="discret">Actif : saisie dans les 7 derniers jours · Calme : 8 à 30 jours · À relancer : plus de 30 jours · Jamais utilisé : aucune saisie.
-      L'activité est enregistrée depuis le 27/11/2026.</p>
-    <button class="lien" onclick="sortir()">Se déconnecter</button>
-  </section>
+
+    <section id="o-vue">
+      <h2 class="titre-section" style="margin-top:6px">Inscriptions</h2>
+      <div class="chiffres">
+        <div class="stat vedette">Salons<b id="kTotal">0</b></div>
+        <div class="stat">Ce mois-ci<b id="kMois">0</b><small id="kMoisPrec"></small></div>
+        <div class="stat">7 derniers jours<b id="kSemaine">0</b></div>
+        <div class="stat">Jamais utilisés<b id="kJamais">0</b></div>
+      </div>
+      <div class="carte"><div class="ligne1">Nouvelles inscriptions par mois</div><div class="graph" id="graphInscriptions"></div></div>
+
+      <h2 class="titre-section">Abonnements</h2>
+      <div class="chiffres">
+        <div class="stat vedette">Abonnés<b id="kAbonnes">0</b></div>
+        <div class="stat">Revenu mensuel<b id="kRevenu">0 €</b><small>estimation</small></div>
+        <div class="stat">En essai<b id="kEssai">0</b><small id="kEssaiFin"></small></div>
+        <div class="stat">Conversion<b id="kConversion">–</b><small>essais terminés devenus abonnés</small></div>
+      </div>
+      <div class="chiffres">
+        <div class="stat">Essais terminés<b id="kExpire">0</b><small>sans abonnement</small></div>
+        <div class="stat">Résiliés / impayés<b id="kPerdus">0</b></div>
+        <div class="stat">Gratuits<b id="kGratuit">0</b></div>
+        <div class="stat">Actifs (7 jours)<b id="kActifs">0</b><small>au moins une saisie</small></div>
+      </div>
+
+      <h2 class="titre-section">Utilisation</h2>
+      <div class="carte"><div class="ligne1">Saisies par mois (tous les salons)</div><div class="graph" id="graphSaisies"></div></div>
+      <h2 class="titre-section">Métiers</h2>
+      <div class="carte" id="metiers"></div>
+      <p class="discret">L'activité est enregistrée depuis le 27/11/2026.</p>
+    </section>
+
+    <section id="o-salons" class="cache">
+      <div class="champ-recherche">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+        <input type="search" id="recherche" placeholder="Nom, métier, e-mail…" oninput="afficherSalons()" aria-label="Rechercher un salon">
+      </div>
+      <div class="filtres" id="filtres">
+        <button class="puce on" data-f="tous">Tous</button>
+        <button class="puce" data-f="essai">En essai</button>
+        <button class="puce" data-f="fin">Fin d'essai ≤ 7 j</button>
+        <button class="puce" data-f="actif">Abonnés</button>
+        <button class="puce" data-f="bloque">Bloqués</button>
+        <button class="puce" data-f="endormi">À relancer</button>
+        <button class="puce" data-f="jamais">Jamais utilisés</button>
+      </div>
+      <p class="discret" id="nbListe"></p>
+      <div id="liste"></div>
+    </section>
+
+    <section id="o-reglages" class="cache">
+      <div class="carte">
+        <div class="ligne1">Apparence du tableau de bord</div>
+        <label class="etiquette">Couleur</label>
+        <div class="paiements" id="regCouleurs"></div>
+        <label class="etiquette">Icône</label>
+        <div class="icones" id="regIcones"></div>
+      </div>
+      <div class="carte">
+        <div class="ligne1">Abonnement</div>
+        <label class="etiquette" for="regPrix">Prix affiché aux pros</label>
+        <input type="text" id="regPrix" maxlength="40" placeholder="ex. 5,90 € / mois">
+        <div class="aide">Texte affiché dans l'application. Le vrai prix est celui de ton lien de paiement Stripe.</div>
+        <label class="etiquette" for="regEssai">Durée de l'essai gratuit (jours)</label>
+        <input type="number" id="regEssai" min="0" max="365" inputmode="numeric">
+        <div class="aide">Pour les prochaines inscriptions. Les essais en cours ne changent pas (tu peux les prolonger salon par salon).</div>
+        <label class="etiquette" for="regLien">Lien de paiement Stripe</label>
+        <input type="text" id="regLien" placeholder="https://buy.stripe.com/…" inputmode="url">
+        <label class="etiquette" for="regPortail">Lien du portail client Stripe (gérer, résilier)</label>
+        <input type="text" id="regPortail" placeholder="https://billing.stripe.com/p/login/…" inputmode="url">
+        <label class="etiquette" for="regCle">Clé API Stripe (restreinte, en lecture)</label>
+        <input type="password" id="regCle" placeholder="rk_live_…" autocomplete="off">
+        <div class="aide" id="etatCle"></div>
+        <div class="aide">
+          <b>Mise en place Stripe (une fois) :</b>
+          <ol>
+            <li>Crée ton compte sur stripe.com (statut, IBAN).</li>
+            <li>Catalogue de produits → nouveau produit « Abonnement » avec un prix mensuel récurrent.</li>
+            <li>Liens de paiement → nouveau lien pour ce prix. Dans « Après le paiement », choisis la redirection vers : <b>https://valentinha36.github.io/suivi/?abonnement=ok</b>. Colle le lien ci-dessus.</li>
+            <li>Paramètres → Facturation → Portail client : active-le et colle son lien de connexion ci-dessus.</li>
+            <li>Développeurs → Clés API → « Créer une clé restreinte » : droits <b>Lecture</b> sur « Checkout Sessions » et « Subscriptions », rien d'autre. Colle-la ci-dessus.</li>
+          </ol>
+        </div>
+      </div>
+      <button class="gros" id="btnReglages" onclick="sauverReglages()">Enregistrer les réglages</button>
+      <button class="lien" style="display:block;margin:16px auto 0" onclick="sortir()">Se déconnecter du tableau de bord</button>
+    </section>
+  </div>
 </main>
 <div id="msg" class="msg" role="status"></div>
 <script>
 'use strict';
 var SERVEUR = 'https://script.google.com/macros/s/AKfycbxWejimyOL5FGpNqy3qYO6JLQZswiVAsl_CDho2ueERr3MP3WwFob3f8E_UDSnLzZQE/exec';
-var donnees = null, filtre = 'tous';
+var MOIS_C = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+var THEMES = { 'Prune et rose': ['#d6457a', '#2d2140', '#6b2f5e', '#fbeef3', '#b23466'], 'Bleu nuit': ['#3b82c4', '#14284a', '#1e4f8a', '#e8f1fa', '#245f9e'],
+  'Vert sauge': ['#6b9a7d', '#2f4a3c', '#4f7a62', '#ecf4ee', '#4f7a62'], 'Noir et or': ['#b08d57', '#111111', '#2b2420', '#f6f0e6', '#8a6b3c'],
+  'Terracotta': ['#c8643b', '#5a2f22', '#9a4a30', '#fbede6', '#a14d2b'], 'Lavande': ['#8a74c9', '#3a2f5e', '#6a5aa8', '#f1edfb', '#6a58ac'] };
+var ICONES = ['📊', '💼', '🚀', '💎', '⭐', '🌸', '✂️', '💅', '🐾', '🔥', '👑', '🦁'];
+var donnees = null, filtre = 'tous', regEdit = {};
 function $(id) { return document.getElementById(id); }
 function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; }
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* rien */ } }
 function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { /* rien */ } }
+function message(t, ms) { var m = $('msg'); m.textContent = t; m.style.display = 'block'; clearTimeout(m._t); m._t = setTimeout(function () { m.style.display = 'none'; }, ms || 3000); }
 var jours = function (iso) { return iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 864e5) : null; };
-var depuis = function (iso) { var j = jours(iso); return j === null ? 'jamais' : j === 0 ? 'aujourd\'hui' : j === 1 ? 'hier' : 'il y a ' + j + ' jours'; };
+var depuis = function (iso) { var j = jours(iso); return j === null ? 'jamais' : j <= 0 ? 'aujourd\'hui' : j === 1 ? 'hier' : 'il y a ' + j + ' j'; };
 var dateFr = function (iso) { return iso ? new Date(iso).toLocaleDateString('fr-FR') : ''; };
+var cleMois = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+var prixNombre = function (t) { var m = String(t || '').replace(',', '.').match(/\d+(\.\d+)?/); return m ? Number(m[0]) : 0; };
 
-function etat(s) {
-  var j = jours(s.saisie);
-  if (j === null) return 'jamais';
-  return j <= 7 ? 'actif' : j <= 30 ? 'calme' : 'endormi';
+function activite(s) { var j = jours(s.saisie); return j === null ? 'jamais' : j <= 7 ? 'actif' : j <= 30 ? 'calme' : 'endormi'; }
+var ACT = { actif: '● Actif', calme: '● Calme', endormi: '● À relancer', jamais: '○ Jamais utilisé' };
+var ABO = { essai: ['Essai', 'calme'], actif: ['Abonné', 'actif'], annule_fin: ['Résilié (en cours)', 'calme'], expire: ['Essai terminé', 'bloque'],
+  impaye: ['Impayé', 'bloque'], annule: ['Résilié', 'bloque'], gratuit: ['Gratuit', 'neutre'] };
+
+function appliquerTheme(r) {
+  var t = THEMES[r.couleur] || THEMES['Prune et rose'], st = document.documentElement.style;
+  st.setProperty('--rose', t[0]); st.setProperty('--rose-clair', t[3]); st.setProperty('--prune', t[2]);
+  st.setProperty('--degrade', 'linear-gradient(135deg, ' + t[1] + ' 0%, ' + t[2] + ' 55%, ' + t[0] + ' 100%)');
+  st.setProperty('--degrade-bouton', 'linear-gradient(135deg, ' + t[0] + ' 0%, ' + t[4] + ' 100%)');
+  $('iconeEntete').textContent = r.icone || '📊';
 }
-var LIBELLES = { actif: '● Actif', calme: '● Calme', endormi: '● À relancer', jamais: '○ Jamais utilisé' };
 
-function entrer() {
+function appel(extra) {
   var cle = $('cle').value.trim() || lsGet('cle_admin_suivi') || '';
-  if (!cle) return montrerConnexion();
-  $('connexion').classList.add('cache'); $('chargement').classList.remove('cache');
-  fetch(SERVEUR, { method: 'POST', credentials: 'omit', body: JSON.stringify({ action: 'admin', cle: cle }) })
+  return fetch(SERVEUR, { method: 'POST', credentials: 'omit', body: JSON.stringify(Object.assign({ action: 'admin', cle: cle }, extra || {})) })
     .then(function (r) { return r.json(); })
-    .then(function (j) {
-      if (!j.ok) throw new Error(j.erreur);
-      lsSet('cle_admin_suivi', cle); donnees = j.data; afficher();
-    })
+    .then(function (j) { if (!j.ok) throw new Error(j.erreur); lsSet('cle_admin_suivi', cle); return j.data; });
+}
+function entrer() {
+  if (!($('cle').value.trim() || lsGet('cle_admin_suivi'))) return montrerConnexion();
+  $('connexion').classList.add('cache'); $('chargement').classList.remove('cache');
+  appel().then(function (d) { donnees = d; toutAfficher(); })
     .catch(function (e) { lsDel('cle_admin_suivi'); montrerConnexion(e && e.message && !/fetch/i.test(e.message) ? e.message : 'Pas de connexion internet.'); });
 }
 function montrerConnexion(msg) {
@@ -104,42 +211,154 @@ function montrerConnexion(msg) {
 }
 function sortir() { lsDel('cle_admin_suivi'); montrerConnexion(); }
 
-function afficher() {
-  var salons = donnees.salons.slice();
-  var moisCourant = new Date().toISOString().slice(0, 7);
-  salons.forEach(function (s) { s.etat = etat(s); s.nbMois = (s.mois || {})[moisCourant] || 0; });
-  salons.sort(function (a, b) { return (b.saisie || b.vu || b.inscrit || '').localeCompare(a.saisie || a.vu || a.inscrit || ''); });
-  $('nbSalons').textContent = salons.length;
-  $('nbActifs').textContent = salons.filter(function (s) { return s.etat === 'actif'; }).length;
-  $('nbMois').textContent = salons.reduce(function (t, s) { return t + s.nbMois; }, 0);
-  $('nbJamais').textContent = salons.filter(function (s) { return s.etat === 'jamais'; }).length;
-  $('sous').textContent = 'Mis à jour ' + new Date(donnees.maintenant).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+function toutAfficher() {
+  donnees.salons.forEach(function (s) { s.act = activite(s); s.abo = s.abo || { statut: 'gratuit' }; });
+  appliquerTheme(donnees.reglages);
+  $('sous').textContent = 'Mis à jour à ' + new Date(donnees.maintenant).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  afficherVue(); afficherSalons(); afficherReglages();
+  $('chargement').classList.add('cache'); $('connexion').classList.add('cache'); $('tableau').classList.remove('cache');
+}
+
+function graphique(zone, valeurs) {
+  zone.innerHTML = '';
+  var max = Math.max.apply(null, valeurs.map(function (v) { return v[1]; }).concat([1]));
+  valeurs.forEach(function (v) {
+    var c = el('div', 'col'); c.appendChild(el('b', '', v[1] ? String(v[1]) : ''));
+    var b = el('i', v[1] ? '' : 'vide'); b.style.height = Math.max(2, v[1] / max * 100) + '%'; b.title = v[0] + ' : ' + v[1]; c.appendChild(b);
+    c.appendChild(el('span', '', v[0])); zone.appendChild(c);
+  });
+}
+function douzeMois() { var r = []; for (var i = 11; i >= 0; i--) { var d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); r.push([cleMois(d), MOIS_C[d.getMonth()]]); } return r; }
+
+function afficherVue() {
+  var S = donnees.salons, mois = douzeMois(), ceMois = mois[11][0], moisPrec = mois[10][0];
+  var inscrits = S.filter(function (s) { return s.inscrit; });
+  var parMois = {}; inscrits.forEach(function (s) { var k = cleMois(new Date(s.inscrit)); parMois[k] = (parMois[k] || 0) + 1; });
+  $('kTotal').textContent = S.length;
+  $('kMois').textContent = parMois[ceMois] || 0;
+  $('kMoisPrec').textContent = 'le mois dernier : ' + (parMois[moisPrec] || 0);
+  $('kSemaine').textContent = inscrits.filter(function (s) { return jours(s.inscrit) <= 7; }).length;
+  $('kJamais').textContent = S.filter(function (s) { return s.act === 'jamais'; }).length;
+  graphique($('graphInscriptions'), mois.map(function (m) { return [m[1], parMois[m[0]] || 0]; }));
+  var n = function (st) { return S.filter(function (s) { return st.indexOf(s.abo.statut) >= 0; }).length; };
+  var abonnes = n(['actif', 'annule_fin']);
+  $('kAbonnes').textContent = abonnes;
+  $('kRevenu').textContent = (Math.round(abonnes * prixNombre(donnees.reglages.prix) * 100) / 100).toLocaleString('fr-FR') + ' €';
+  var essais = S.filter(function (s) { return s.abo.statut === 'essai'; });
+  $('kEssai').textContent = essais.length;
+  var finProche = essais.filter(function (s) { return s.abo.jours !== null && s.abo.jours <= 7; }).length;
+  $('kEssaiFin').textContent = finProche ? finProche + ' finissent dans 7 jours' : '';
+  var expires = n(['expire']), convertis = S.filter(function (s) { return s.abo.stripe || ['actif', 'annule_fin', 'annule', 'impaye'].indexOf(s.abo.statut) >= 0; }).length;
+  $('kConversion').textContent = (expires + convertis) ? Math.round(convertis / (expires + convertis) * 100) + ' %' : '–';
+  $('kExpire').textContent = expires;
+  $('kPerdus').textContent = n(['annule', 'impaye']);
+  $('kGratuit').textContent = n(['gratuit']);
+  $('kActifs').textContent = S.filter(function (s) { return s.act === 'actif'; }).length;
+  var saisies = {}; S.forEach(function (s) { Object.keys(s.mois || {}).forEach(function (k) { saisies[k] = (saisies[k] || 0) + s.mois[k]; }); });
+  graphique($('graphSaisies'), mois.map(function (m) { return [m[1], saisies[m[0]] || 0]; }));
+  var met = {}; S.forEach(function (s) { var k = s.metier || 'Non renseigné'; met[k] = (met[k] || 0) + 1; });
+  var z = $('metiers'); z.innerHTML = '';
+  var cles = Object.keys(met).sort(function (a, b) { return met[b] - met[a]; });
+  if (!cles.length) z.appendChild(el('div', 'ligne2', 'Aucun salon pour l\'instant.'));
+  cles.forEach(function (k) {
+    var c = el('div', 'cat'), l = el('div', 'ligne1'); l.appendChild(el('span', '', k)); l.appendChild(el('span', '', met[k] + ' · ' + Math.round(met[k] / S.length * 100) + ' %'));
+    c.appendChild(l); var b = el('div', 'barre'); b.style.width = Math.max(4, met[k] / met[cles[0]] * 100) + '%'; c.appendChild(b); z.appendChild(c);
+  });
+}
+
+function afficherSalons() {
+  var q = ($('recherche').value || '').toLowerCase().trim();
+  var S = donnees.salons.filter(function (s) {
+    if (q && (s.nom + ' ' + s.metier + ' ' + s.email).toLowerCase().indexOf(q) < 0) return false;
+    if (filtre === 'tous') return true;
+    if (filtre === 'essai') return s.abo.statut === 'essai';
+    if (filtre === 'fin') return s.abo.statut === 'essai' && s.abo.jours !== null && s.abo.jours <= 7;
+    if (filtre === 'actif') return s.abo.statut === 'actif' || s.abo.statut === 'annule_fin';
+    if (filtre === 'bloque') return ['expire', 'impaye', 'annule'].indexOf(s.abo.statut) >= 0;
+    return s.act === filtre;
+  }).sort(function (a, b) { return (b.saisie || b.vu || b.inscrit || '').localeCompare(a.saisie || a.vu || a.inscrit || ''); });
+  $('nbListe').textContent = S.length + ' salon' + (S.length > 1 ? 's' : '');
   var z = $('liste'); z.innerHTML = '';
-  var liste = salons.filter(function (s) { return filtre === 'tous' || s.etat === filtre; });
-  if (!liste.length) z.appendChild(el('p', 'discret', 'Aucun salon ici.'));
-  liste.forEach(function (s) {
+  if (!S.length) z.appendChild(el('p', 'discret', 'Aucun salon ici.'));
+  var mois = douzeMois().slice(6), ceMois = douzeMois()[11][0];
+  S.forEach(function (s) {
     var k = el('div', 'carte salon');
-    var l1 = el('div', 'ligne1'); l1.appendChild(el('span', '', s.nom)); l1.appendChild(el('span', 'etat ' + s.etat, LIBELLES[s.etat]));
-    k.appendChild(l1);
-    k.appendChild(el('div', 'ligne2', [s.metier, s.inscrit ? 'inscrit le ' + dateFr(s.inscrit) : 'installé à la main'].filter(Boolean).join(' · ')));
-    k.appendChild(el('div', 'ligne2', 'Dernière saisie : ' + depuis(s.saisie) + ' · dernière ouverture : ' + depuis(s.vu) + ' · ' + s.nbMois + ' saisie' + (s.nbMois > 1 ? 's' : '') + ' ce mois'));
-    // Saisies des 6 derniers mois
-    var mini = el('div', 'mini'), mois = [], max = 1;
-    for (var i = 5; i >= 0; i--) { var d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); var cle = d.toISOString().slice(0, 7); var n = (s.mois || {})[cle] || 0; mois.push([cle, n]); max = Math.max(max, n); }
-    mois.forEach(function (m) { var b = el('i', m[1] ? '' : 'vide'); b.style.height = Math.max(8, m[1] / max * 100) + '%'; b.title = m[0] + ' : ' + m[1] + ' saisie(s)'; mini.appendChild(b); });
+    var l1 = el('div', 'ligne1'); l1.appendChild(el('span', '', s.nom));
+    var et = el('span', 'etats'), a = ABO[s.abo.statut] || ['?', 'neutre'];
+    et.appendChild(el('span', 'etat ' + a[1], a[0])); et.appendChild(el('span', 'etat ' + s.act, ACT[s.act])); l1.appendChild(et); k.appendChild(l1);
+    var infoAbo = s.abo.statut === 'essai' ? 'essai jusqu\'au ' + dateFr(s.abo.fin) + ' (' + s.abo.jours + ' j)'
+      : (s.abo.statut === 'actif' || s.abo.statut === 'annule_fin') ? 'payé jusqu\'au ' + dateFr(s.abo.fin) + (s.abo.note ? ' · ' + s.abo.note : '')
+      : s.abo.fin ? 'depuis le ' + dateFr(s.abo.fin) : (s.abo.note || '');
+    k.appendChild(el('div', 'ligne2', [s.metier, s.inscrit ? 'inscrit le ' + dateFr(s.inscrit) : 'installé à la main', infoAbo].filter(Boolean).join(' · ')));
+    var nbMois = (s.mois || {})[ceMois] || 0;
+    k.appendChild(el('div', 'ligne2', 'Dernière saisie : ' + depuis(s.saisie) + ' · ouverture : ' + depuis(s.vu) + ' · ' + nbMois + ' saisie' + (nbMois > 1 ? 's' : '') + ' ce mois'));
+    var mini = el('div', 'mini'), max = 1;
+    mois.forEach(function (m) { max = Math.max(max, (s.mois || {})[m[0]] || 0); });
+    mois.forEach(function (m) { var v = (s.mois || {})[m[0]] || 0, b = el('i', v ? '' : 'vide'); b.style.height = Math.max(8, v / max * 100) + '%'; b.title = m[1] + ' : ' + v; mini.appendChild(b); });
     k.appendChild(mini);
     var lg = el('div', 'legende-mini'); lg.appendChild(el('span', '', 'il y a 6 mois')); lg.appendChild(el('span', '', 'ce mois')); k.appendChild(lg);
     var l3 = el('div', 'ligne2');
-    if (s.email) { var a = el('a', '', '✉️ ' + s.email); a.href = 'mailto:' + s.email; l3.appendChild(a); l3.appendChild(document.createTextNode('  ')); }
+    if (s.email) { var ae = el('a', '', '✉️ ' + s.email); ae.href = 'mailto:' + s.email; l3.appendChild(ae); l3.appendChild(document.createTextNode('  ')); }
     // (pas de lien direct : l'ouvrir ici remplacerait ton propre salon sur cet appareil)
-    var o = el('a', '', '🔗 Copier son lien'); o.href = '#'; o.onclick = function (ev) { ev.preventDefault(); if (navigator.clipboard) navigator.clipboard.writeText(s.lien).then(function () { var m = $('msg'); m.textContent = '✅ Lien copié'; m.style.display = 'block'; setTimeout(function () { m.style.display = 'none'; }, 2000); }); }; l3.appendChild(o);
-    k.appendChild(l3);
+    var o = el('a', '', '🔗 Copier son lien'); o.href = '#';
+    o.onclick = function (ev) { ev.preventDefault(); if (navigator.clipboard) navigator.clipboard.writeText(s.lien).then(function () { message('✅ Lien copié'); }); };
+    l3.appendChild(o); k.appendChild(l3);
+    var act = el('div', 'actions-salon');
+    var bouton = function (txt, action, extra, conf) {
+      var b = el('button', 'lien', txt);
+      b.onclick = function () { if (conf && !confirm(conf)) return; actionSalon(s.id, action, extra); };
+      act.appendChild(b);
+    };
+    bouton('+30 jours', 'prolonger', { jours: 30 }, 'Prolonger « ' + s.nom + ' » de 30 jours ?');
+    if (s.abo.statut !== 'gratuit') bouton('Offrir (gratuit)', 'gratuit', null, 'Rendre « ' + s.nom + ' » gratuit à vie ?');
+    if (s.abo.statut === 'gratuit' || s.abo.statut === 'expire') bouton('Remettre en essai', 'essai', null, 'Remettre « ' + s.nom + ' » en essai gratuit ?');
+    bouton('Payé hors Stripe (1 mois)', 'actif_manuel', { jours: 31 }, 'Marquer « ' + s.nom + ' » comme abonné pour 31 jours (espèces, virement…) ?');
+    k.appendChild(act);
     z.appendChild(k);
   });
-  $('chargement').classList.add('cache'); $('connexion').classList.add('cache'); $('tableau').classList.remove('cache');
 }
+function actionSalon(id, action, extra) {
+  message('⏳ Enregistrement…', 8000);
+  appel(Object.assign({ op: 'salon', id: id, action: action }, extra || {}))
+    .then(function (d) { donnees = d; toutAfficher(); message('✅ Fait.'); })
+    .catch(function (e) { message('⚠️ ' + e.message, 5000); });
+}
+
+function afficherReglages() {
+  var r = donnees.reglages;
+  regEdit = { couleur: r.couleur, icone: r.icone };
+  var zc = $('regCouleurs'); zc.innerHTML = '';
+  (donnees.themes || Object.keys(THEMES)).forEach(function (t) {
+    var b = el('button', 'puce' + (t === r.couleur ? ' on' : '')), p = el('i', 'pastille'); p.style.background = (THEMES[t] || ['#999'])[0]; b.appendChild(p); b.appendChild(document.createTextNode(t));
+    b.onclick = function () { regEdit.couleur = t; zc.querySelectorAll('.puce').forEach(function (x) { x.classList.toggle('on', x === b); }); appliquerTheme(regEdit); };
+    zc.appendChild(b);
+  });
+  var zi = $('regIcones'); zi.innerHTML = '';
+  ICONES.forEach(function (ic) {
+    var b = el('button', ic === r.icone ? 'on' : '', ic); b.setAttribute('aria-label', 'Icône ' + ic);
+    b.onclick = function () { regEdit.icone = ic; zi.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); }); appliquerTheme(regEdit); };
+    zi.appendChild(b);
+  });
+  $('regPrix').value = r.prix || ''; $('regEssai').value = r.essaiJours; $('regLien').value = r.lienPaiement || ''; $('regPortail').value = r.lienPortail || ''; $('regCle').value = '';
+  $('etatCle').textContent = r.cleStripe ? '✅ Une clé est enregistrée (elle n\'est jamais réaffichée). Laisse vide pour la garder.' : 'Aucune clé enregistrée : la vérification automatique des paiements est désactivée.';
+}
+function sauverReglages() {
+  var b = $('btnReglages'); b.disabled = true; b.textContent = 'Enregistrement…';
+  appel({ op: 'reglages', r: { couleur: regEdit.couleur, icone: regEdit.icone, prix: $('regPrix').value.trim(), essaiJours: $('regEssai').value,
+    lienPaiement: $('regLien').value.trim(), lienPortail: $('regPortail').value.trim(), cleStripe: $('regCle').value.trim() } })
+    .then(function (d) { donnees = d; toutAfficher(); message('✅ Réglages enregistrés.'); })
+    .catch(function (e) { message('⚠️ ' + e.message, 6000); })
+    .finally(function () { b.disabled = false; b.textContent = 'Enregistrer les réglages'; });
+}
+
+document.querySelectorAll('#onglets .puce').forEach(function (b) {
+  b.onclick = function () {
+    document.querySelectorAll('#onglets .puce').forEach(function (x) { x.classList.toggle('on', x === b); });
+    ['vue', 'salons', 'reglages'].forEach(function (o) { $('o-' + o).classList.toggle('cache', o !== b.dataset.o); });
+  };
+});
 document.querySelectorAll('#filtres .puce').forEach(function (b) {
-  b.onclick = function () { filtre = b.dataset.f; document.querySelectorAll('#filtres .puce').forEach(function (x) { x.classList.toggle('on', x === b); }); afficher(); };
+  b.onclick = function () { filtre = b.dataset.f; document.querySelectorAll('#filtres .puce').forEach(function (x) { x.classList.toggle('on', x === b); }); afficherSalons(); };
 });
 if (lsGet('cle_admin_suivi')) entrer(); else montrerConnexion();
 </script>
