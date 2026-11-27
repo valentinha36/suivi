@@ -1,4 +1,4 @@
-/* ===== Suivi Ongles – application ===== */
+/* ===== SoRyo – application ===== */
 'use strict';
 
 /* Salon de la cliente : donné une fois dans le lien, puis mémorisé sur l'appareil.
@@ -382,7 +382,7 @@ function afficherAccueil() {
   info.appendChild(l1);
   info.appendChild(el('div', 'ligne2', [D.reglages && D.reglages.metier, D.clientes.length + ' ' + M('cliente', 'client') + (D.clientes.length > 1 ? 's' : ''),
     D.journal.length + ' prestation' + (D.journal.length > 1 ? 's' : '') + ' enregistrée' + (D.journal.length > 1 ? 's' : '')].filter(Boolean).join(' · ')));
-  $('lienRecommander').href = lienSms('', 'Je te conseille cette application gratuite pour suivre tes clients (fidélité automatique, agenda, rappels SMS, bilan) : ' + location.origin + location.pathname.replace(/[^/]*$/, '') + 'inscription.html');
+  $('lienRecommander').href = lienSms('', 'Je te conseille SoRyo, l\'application pour suivre tes clients (fidélité automatique, agenda, rappels SMS, bilan). 30 jours gratuits : ' + location.origin + location.pathname.replace(/[^/]*$/, '') + 'inscription.html');
 }
 
 /** Plus → Verrouiller : oublie le code sur cet appareil. */

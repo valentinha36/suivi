@@ -1,6 +1,6 @@
 {
-  "name": "Suivi des prestations",
-  "short_name": "Suivi",
+  "name": "SoRyo",
+  "short_name": "SoRyo",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
